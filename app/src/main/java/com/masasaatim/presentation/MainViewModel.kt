@@ -39,18 +39,21 @@ class MainViewModel(
     private val _prayerTimes = MutableStateFlow<PrayerTime?>(null)
     val prayerTimes: StateFlow<PrayerTime?> = _prayerTimes.asStateFlow()
 
-    private val _remainingTime = MutableStateFlow("Hesaplanıyor...")
+    private val _remainingTime = MutableStateFlow("Berechnen...")
     val remainingTime: StateFlow<String> = _remainingTime.asStateFlow()
 
-    // GECE MODU (DIMMING) STATE: Gece modunun aktif olup olmadığını UI katmanına bildirir
+    // REAKTIVE KONTROLL-MOTOREN (OLED & AUDIO PROTECTION)
     private val _isDimmedMode = MutableStateFlow(false)
     val isDimmedMode: StateFlow<Boolean> = _isDimmedMode.asStateFlow()
+
+    private val _isAzanPlaying = MutableStateFlow(false)
+    val isAzanPlaying: StateFlow<Boolean> = _isAzanPlaying.asStateFlow()
 
     private val handler = Handler(Looper.getMainLooper())
     private val timeRunnable = object : Runnable {
         override fun run() {
             updateLiveTime()
-            handler.postDelayed(this, 1000) // Her saniye güncelle
+            handler.postDelayed(this, 1000)
         }
     }
 
@@ -61,21 +64,18 @@ class MainViewModel(
 
     private fun updateLiveTime() {
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
+        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr")) // Türkischer Kalender-Text
         val now = Date()
         _currentTime.value = timeFormat.format(now)
         _currentDate.value = dateFormat.format(now)
 
-        // --- AUTO-DIMMING ALGORİTMASI ---
+        // AUTO-DIMMING ALGORITHMUS (22:00 - 06:00)
         val calendar = Calendar.getInstance()
-        val currentHour = calendar.get(Calendar.HOUR_OF_DAY) // 24 saat formatında saat
-
-        // Gece 22:00 (dahil) ile sabah 06:00 (hariç) saatleri arasında parlaklığı kıs
+        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
         val shouldDim = currentHour >= 22 || currentHour < 6
         if (_isDimmedMode.value != shouldDim) {
             _isDimmedMode.value = shouldDim
         }
-        // ---------------------------------
 
         _prayerTimes.value?.let { calculateRemainingTime(it) }
     }
@@ -88,7 +88,7 @@ class MainViewModel(
                 if (prayerTime != null) {
                     _prayerTimes.value = prayerTime
                 } else {
-                    // Arka plan iş parçacığında internetten çek ve uygulamayı çökertme
+                    // Huawei/Asynchron-Sicherheitsnetz
                     viewModelScope.launch(Dispatchers.IO) {
                         fetchPrayerTimesUseCase(41.0082, 28.9784).onFailure { error ->
                             error.printStackTrace()
@@ -99,26 +99,24 @@ class MainViewModel(
         }
     }
 
-
-
     private fun calculateRemainingTime(prayer: PrayerTime) {
         val now = Calendar.getInstance()
         val currentMs = now.timeInMillis
-
         val todayStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(Date())
 
-        val vakitler = listOf(
+        val prayerList = listOf(
             Pair("imsak", prayer.imsak),
-            Pair("ogle", prayer.ogle),
-            Pair("ikindi", prayer.ikindi),
-            Pair("aksam", prayer.aksam),
-            Pair("yatsi", prayer.yatsi)
+            Pair("sunrise", prayer.gunes),
+            Pair("dhuhr", prayer.ogle),
+            Pair("asr", prayer.ikindi),
+            Pair("maghrib", prayer.aksam),
+            Pair("isha", prayer.yatsi)
         )
 
-        var nextVakitName = "İmsak"
+        var nextVakitName = "imsak"
         var nextVakitMs: Long = 0
 
-        for (vakit in vakitler) {
+        for (vakit in prayerList) {
             try {
                 val vakitDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                     .parse(todayStr + vakit.second)
@@ -143,9 +141,9 @@ class MainViewModel(
 
         val diff = nextVakitMs - currentMs
 
-        // HUAWEİ GÜVENLİK FİLTRESİ: Sadece tam saniyesinde (0. saniyede) tetiklenmesini sağla.
-        // İlk açılışta milisaniyelik gecikmeler yüzünden servisin çökmesini engeller.
+        // EXAKTER AUDIO-TIMER (Startet punktgenau zur 0. Sekunde)
         if (diff in 0..999 && currentMs % 60000 < 1500) {
+            _isAzanPlaying.value = true
             triggerAzanService(nextVakitName)
         }
 
@@ -156,13 +154,33 @@ class MainViewModel(
         _remainingTime.value = String.format("%s vaktine %02d:%02d:%02d kaldı", nextVakitName.uppercase(), hours, minutes, seconds)
     }
 
-
-    private fun triggerAzanService(vakitName: String) {
+    private fun triggerAzanService(prayerType: String) {
         val intent = Intent(getApplication(), AzanPlaybackService::class.java).apply {
-            // Nutzt jetzt die saubere Framework-Konstante des Services
-            putExtra(AzanPlaybackService.EXTRA_PRAYER_TYPE, vakitName.lowercase())
+            putExtra(AzanPlaybackService.EXTRA_PRAYER_TYPE, prayerType.lowercase())
         }
-        getApplication<android.app.Application>().startForegroundService(intent)
+        getApplication<Application>().startForegroundService(intent)
+    }
+
+    // AUDIO-SIMULATION (PLAY-ICON METODU)
+    fun simulateAzanTrigger() {
+        viewModelScope.launch {
+            val currentVakit = _remainingTime.value.substringBefore(" ").lowercase()
+            val targetVakit = if (currentVakit.contains("berechnen") || currentVakit.contains("kaldi")) "dhuhr" else currentVakit
+
+            _isAzanPlaying.value = true
+            triggerAzanService(targetVakit)
+        }
+    }
+
+    // AUDIO-KILLER (STOP-ICON METODU)
+    fun stopAzanPlayback() {
+        viewModelScope.launch {
+            _isAzanPlaying.value = false
+            val intent = Intent(getApplication(), AzanPlaybackService::class.java).apply {
+                action = AzanPlaybackService.ACTION_STOP_AZAN
+            }
+            getApplication<Application>().startForegroundService(intent)
+        }
     }
 
     override fun onCleared() {
@@ -170,7 +188,6 @@ class MainViewModel(
         super.onCleared()
     }
 
-    // Senior standardında Factory yapısı ile ViewModel üretimi
     companion object {
         fun provideFactory(application: Application): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -184,17 +201,4 @@ class MainViewModel(
             }
         }
     }
-
-    // SES TEST MOTORU: Kullanıcı butona bastığında o anki aktif vakti simüle eder
-    fun simulateAzanTrigger() {
-        viewModelScope.launch {
-            val currentVakit = _remainingTime.value.substringBefore(" ").lowercase()
-            // Eğer vakit henüz hesaplanmadıysa varsayılan olarak "ogle" ezanını test et
-            val targetVakit = if (currentVakit.contains("hesaplanıyor")) "ogle" else currentVakit
-
-            // Servisi manuel olarak anında tetikle
-            triggerAzanService(targetVakit)
-        }
-    }
-
 }
