@@ -184,4 +184,17 @@ class MainViewModel(
             }
         }
     }
+
+    // SES TEST MOTORU: Kullanıcı butona bastığında o anki aktif vakti simüle eder
+    fun simulateAzanTrigger() {
+        viewModelScope.launch {
+            val currentVakit = _remainingTime.value.substringBefore(" ").lowercase()
+            // Eğer vakit henüz hesaplanmadıysa varsayılan olarak "ogle" ezanını test et
+            val targetVakit = if (currentVakit.contains("hesaplanıyor")) "ogle" else currentVakit
+
+            // Servisi manuel olarak anında tetikle
+            triggerAzanService(targetVakit)
+        }
+    }
+
 }

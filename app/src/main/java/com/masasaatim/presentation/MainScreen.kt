@@ -88,13 +88,34 @@ fun MainScreen() {
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
+            // Sol paneldeki mevcut kodların devamı...
             Text(
                 text = remainingTime,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
-                color = if (isDimmedMode) Color(0xFF222222) else Color.Gray, // Dinamik Sayaç Rengi
+                color = if (isDimmedMode) Color(0xFF222222) else Color.Gray,
                 textAlign = TextAlign.Center
             )
+
+            // --- PREMIUM SES TEST BUTONU ---
+            Spacer(modifier = Modifier.height(16.dp))
+            androidx.compose.material3.Button(
+                onClick = { viewModel.simulateAzanTrigger() },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = if (isDimmedMode) Color(0xFF111111) else Color(0xFF121212),
+                    contentColor = if (isDimmedMode) Color(0xFF333333) else Color(0xFF00E676)
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "SESİ TEST ET",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+
         }
 
         // SAĞ PANEL: Ezan Vakitleri Listesi (Dinamik Renkli)
