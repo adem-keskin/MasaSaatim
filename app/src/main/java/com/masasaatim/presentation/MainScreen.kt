@@ -18,6 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.masasaatim.domain.model.PrayerTime
+import java.util.Calendar
 
 @Composable
 fun MainScreen() {
@@ -29,18 +31,44 @@ fun MainScreen() {
     val prayerTimes by viewModel.prayerTimes.collectAsState()
     val remainingTime by viewModel.remainingTime.collectAsState()
 
+    // Gece modu durumunu Viewmodel üzerinden reaktif olarak dinliyoruz
+    val isDimmedMode by viewModel.isDimmedMode.collectAsState()
+
+    // --- SENIOR AUTO-DIMMING RENK MOTORU ---
+    // Eğer gece modundaysak, piksellerin ışık şiddetini %80 oranında düşürüyoruz.
+    val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF)       // Beyaz -> Mat Koyu Gri
+    val primaryDetailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFF00E676) // Neon Yeşil -> Loş Orman Yeşili
+    val listLabelColor = if (isDimmedMode) Color(0xFF333333) else Color(0xB3FFFFFF)     // Flu Beyaz -> Çok Koyu Gri
+    val dividerColor = if (isDimmedMode) Color(0xFF0A0A0A) else Color(0xFF1E1E1E)       // İnce Çizgi -> Neredeyse Siyah
+    // ----------------------------------------
+
+    // PREMIUM AMOLED BURN-IN SCHUTZ-ALGORITHMUS (Mevcut koruma)
+    val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
+    val offsetX = when (currentMinute % 4) {
+        0 -> 6.dp
+        1 -> (-6).dp
+        2 -> 4.dp
+        else -> (-4).dp
+    }
+    val offsetY = when (currentMinute % 3) {
+        0 -> 4.dp
+        1 -> (-4).dp
+        else -> 2.dp
+    }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black) // Saf AMOLED Siyahı ile pil tasarrufu
+            .background(Color(0xFF000000)) // Saf AMOLED Siyahı arka planı korur
             .padding(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // SOL PANEL: Canlı Saat ve Tarih Gösterimi
+        // SOL PANEL: Canlı Saat ve Tarih Gösterimi (Dinamik Renkli)
         Column(
             modifier = Modifier
                 .weight(1.2f)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .offset(x = offsetX, y = offsetY),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -48,7 +76,7 @@ fun MainScreen() {
                 text = currentTime,
                 fontSize = 84.sp,
                 fontWeight = FontWeight.Light,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = clockColor, // Dinamik Renk
                 letterSpacing = 2.sp
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -56,7 +84,7 @@ fun MainScreen() {
                 text = currentDate,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary, // Dikkat çeken şık neon yeşil detay
+                color = primaryDetailColor, // Dinamik Renk
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -64,26 +92,27 @@ fun MainScreen() {
                 text = remainingTime,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Normal,
-                color = Color.Gray,
+                color = if (isDimmedMode) Color(0xFF222222) else Color.Gray, // Dinamik Sayaç Rengi
                 textAlign = TextAlign.Center
             )
         }
 
-        // SAĞ PANEL: Ezan Vakitleri Listesi
+        // SAĞ PANEL: Ezan Vakitleri Listesi (Dinamik Renkli)
         Column(
             modifier = Modifier
                 .weight(0.8f)
                 .fillMaxHeight()
-                .padding(start = 16.dp),
+                .padding(start = 16.dp)
+                .offset(x = -offsetX, y = -offsetY),
             verticalArrangement = Arrangement.Center
         ) {
             prayerTimes?.let { times ->
-                PrayerTimeRow(name = "İmsak", time = times.imsak)
-                PrayerTimeRow(name = "Güneş", time = times.gunes)
-                PrayerTimeRow(name = "Öğle", time = times.ogle)
-                PrayerTimeRow(name = "İkindi", time = times.ikindi)
-                PrayerTimeRow(name = "Akşam", time = times.aksam)
-                PrayerTimeRow(name = "Yatsı", time = times.yatsi)
+                PrayerTimeRow(name = "İmsak", time = times.imsak, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
+                PrayerTimeRow(name = "Güneş", time = times.gunes, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
+                PrayerTimeRow(name = "Öğle", time = times.ogle, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
+                PrayerTimeRow(name = "İkindi", time = times.ikindi, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
+                PrayerTimeRow(name = "Akşam", time = times.aksam, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
+                PrayerTimeRow(name = "Yatsı", time = times.yatsi, labelColor = listLabelColor, valueColor = clockColor, divColor = dividerColor)
             } ?: run {
                 Text(
                     text = "Vakitler yükleniyor...",
@@ -98,7 +127,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun PrayerTimeRow(name: String, time: String) {
+fun PrayerTimeRow(name: String, time: String, labelColor: Color, valueColor: Color, divColor: Color) {
     Column {
         Row(
             modifier = Modifier
@@ -111,15 +140,15 @@ fun PrayerTimeRow(name: String, time: String) {
                 text = name,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface
+                color = labelColor // Gece moduna duyarlı etiket rengi
             )
             Text(
                 text = time,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = valueColor // Gece moduna duyarlı vakit saati rengi
             )
         }
-        HorizontalDivider(color = Color(0xFF1E1E1E), thickness = 0.5.dp)
+        HorizontalDivider(color = divColor, thickness = 0.5.dp) // Gece moduna duyarlı ince çizgi
     }
 }

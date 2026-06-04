@@ -42,6 +42,10 @@ class MainViewModel(
     private val _remainingTime = MutableStateFlow("Hesaplanıyor...")
     val remainingTime: StateFlow<String> = _remainingTime.asStateFlow()
 
+    // GECE MODU (DIMMING) STATE: Gece modunun aktif olup olmadığını UI katmanına bildirir
+    private val _isDimmedMode = MutableStateFlow(false)
+    val isDimmedMode: StateFlow<Boolean> = _isDimmedMode.asStateFlow()
+
     private val handler = Handler(Looper.getMainLooper())
     private val timeRunnable = object : Runnable {
         override fun run() {
@@ -62,7 +66,17 @@ class MainViewModel(
         _currentTime.value = timeFormat.format(now)
         _currentDate.value = dateFormat.format(now)
 
-        // Kalan süreyi her saniye güncelle
+        // --- AUTO-DIMMING ALGORİTMASI ---
+        val calendar = Calendar.getInstance()
+        val currentHour = calendar.get(Calendar.HOUR_OF_DAY) // 24 saat formatında saat
+
+        // Gece 22:00 (dahil) ile sabah 06:00 (hariç) saatleri arasında parlaklığı kıs
+        val shouldDim = currentHour >= 22 || currentHour < 6
+        if (_isDimmedMode.value != shouldDim) {
+            _isDimmedMode.value = shouldDim
+        }
+        // ---------------------------------
+
         _prayerTimes.value?.let { calculateRemainingTime(it) }
     }
 
