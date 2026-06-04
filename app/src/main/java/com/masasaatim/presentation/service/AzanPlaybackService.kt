@@ -18,7 +18,8 @@ class AzanPlaybackService : Service() {
 
     companion object {
         const val EXTRA_PRAYER_TYPE = "EXTRA_PRAYER_TYPE"
-        const val ACTION_STOP_AZAN = "ACTION_STOP_AZAN" // Durdurma aksiyonu tanımlandı
+        const val EXTRA_IS_DIMMED = "EXTRA_IS_DIMMED" // Gece modu anahtarı tanımlandı
+        const val ACTION_STOP_AZAN = "ACTION_STOP_AZAN"
         const val NOTIFICATION_CHANNEL_ID = "ezan_channel"
         const val FOREGROUND_SERVICE_ID = 1001
     }
@@ -29,17 +30,20 @@ class AzanPlaybackService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Eğer gelen komut durdurma aksiyonu ise player'ı sustur ve servisi kapat
         if (intent?.action == ACTION_STOP_AZAN) {
             stopSelf()
             return START_NOT_STICKY
         }
 
         val prayerType = intent?.getStringExtra(EXTRA_PRAYER_TYPE) ?: "dhuhr"
+        // Gece modu bilgisini oku (varsayılan olarak false)
+        val isDimmed = intent?.getBooleanExtra(EXTRA_IS_DIMMED, false) ?: false
+
+        val notificationText = if (isDimmed) "Adhan ($prayerType) wird im Nachtmodus leise abgespielt." else "Adhan ($prayerType) wird im Hintergrund abgespielt."
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Masa Saatim")
-            .setContentText("Adhan ($prayerType) arka planda çalınıyor.")
+            .setContentText(notificationText)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -48,7 +52,7 @@ class AzanPlaybackService : Service() {
         try {
             startForeground(FOREGROUND_SERVICE_ID, notification)
             Handler(Looper.getMainLooper()).postDelayed({
-                playAzanAudio(prayerType)
+                playAzanAudio(prayerType, isDimmed)
             }, 200)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -58,7 +62,7 @@ class AzanPlaybackService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun playAzanAudio(prayerType: String) {
+    private fun playAzanAudio(prayerType: String, isDimmed: Boolean) {
         val rawResourceId = when (prayerType.lowercase()) {
             "imsak" -> R.raw.imsak
             "sunrise" -> R.raw.ogle
@@ -73,6 +77,16 @@ class AzanPlaybackService : Service() {
 
         exoPlayer?.let { player ->
             player.setMediaItem(MediaItem.fromUri(audioUri))
+
+            // --- SENIOR AKILLI SES FİLTRESİ ---
+            // Eğer gece modundaysak ses seviyesini %20'ye (0.2f) çek, gündüz ise tam ses (1.0f) yap
+            if (isDimmed) {
+                player.volume = 0.2f
+            } else {
+                player.volume = 1.0f
+            }
+            // ----------------------------------
+
             player.prepare()
             player.play()
 

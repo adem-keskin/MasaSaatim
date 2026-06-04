@@ -157,6 +157,8 @@ class MainViewModel(
     private fun triggerAzanService(prayerType: String) {
         val intent = Intent(getApplication(), AzanPlaybackService::class.java).apply {
             putExtra(AzanPlaybackService.EXTRA_PRAYER_TYPE, prayerType.lowercase())
+            // GECE SES KISMA EKLEMESİ: O anki gece modu durumunu servise gönderiyoruz
+            putExtra(AzanPlaybackService.EXTRA_IS_DIMMED, _isDimmedMode.value)
         }
         getApplication<Application>().startForegroundService(intent)
     }
