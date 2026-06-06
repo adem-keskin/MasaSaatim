@@ -19,3 +19,12 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# GSON ve Retrofit Veri Modellerinin Karıştırılmasını Engelleme Kuralı
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+
+# Sizin ağ modellerinizin bulunduğu klasörü koruma altına alıyoruz
+-keep class com.masasaatim.data.model.** { *; }
+
+# Retrofit arayüzünüzü (Interface) koruma altına alıyoruz
+-keep class com.masasaatim.core.network.** { *; }
