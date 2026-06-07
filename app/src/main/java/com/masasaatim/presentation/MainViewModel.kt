@@ -139,20 +139,39 @@ class MainViewModel(
             getPrayerTimeUseCase(todayStr).collect { prayerTime ->
                 if (prayerTime != null) {
                     _prayerTimes.value = prayerTime
+//                } else {
+//                    val lat = latitude ?: 51.9311
+//                    val lon = longitude ?: 8.8681
+//
+//                    viewModelScope.launch(Dispatchers.IO) {
+//                        fetchPrayerTimesUseCase(lat, lon).onSuccess {
+//                            viewModelScope.launch(Dispatchers.Main) {
+//                                updateLiveTime()
+//                            }
+//                        }.onFailure { error ->
+//                            android.util.Log.e("MasaSaatim", "Senkronizasyon Hatası: ${error.localizedMessage}")
+//                        }
+//                    }
+//                }
+                    // Suchen Sie diesen Bereich in MainViewModel.kt und passen Sie ihn an:
                 } else {
-                    val lat = latitude ?: 51.9311
-                    val lon = longitude ?: 8.8681
+                    val lat = latitude ?: 51.9311  // Standard-Breitengrad (z.B. Augustdorf)
+                    val lon = longitude ?: 8.8681  // Standard-Längengrad
 
-                    viewModelScope.launch(Dispatchers.IO) {
-                        fetchPrayerTimesUseCase(lat, lon).onSuccess {
-                            viewModelScope.launch(Dispatchers.Main) {
-                                updateLiveTime()
-                            }
-                        }.onFailure { error ->
-                            android.util.Log.e("MasaSaatim", "Senkronizasyon Hatası: ${error.localizedMessage}")
+                    // Berechnung direkt offline über den neuen UseCase starten
+                    val offlineResult = fetchPrayerTimesUseCase(lat, lon)
+
+                    offlineResult.onSuccess { computedTimes ->
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _prayerTimes.value = computedTimes
+                            updateLiveTime()
+                            android.util.Log.d("MasaSaatim", "Gebetszeiten erfolgreich offline berechnet!")
                         }
+                    }.onFailure { error ->
+                        android.util.Log.e("MasaSaatim", "Fehler bei Offline-Berechnung: ${error.localizedMessage}")
                     }
                 }
+
             }
         }
     }

@@ -14,3 +14,4 @@ interface PrayerApiService {
         @Query("calendarMethod") calendarMethod: String = "DIYANET" // Optimiert die Diyanet-Berechnung
     ): PrayerResponseDto
 }
+//aylik diyanet vakitleri internet gerekli

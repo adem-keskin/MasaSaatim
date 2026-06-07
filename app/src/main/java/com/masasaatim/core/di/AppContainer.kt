@@ -32,7 +32,9 @@ class AppContainer(private val context: Context) {
         GetPrayerTimeUseCase(prayerRepository)
     }
 
-    val fetchPrayerTimesUseCase: FetchPrayerTimesUseCase by lazy {
-        FetchPrayerTimesUseCase(prayerRepository)
-    }
+    //  val fetchPrayerTimesUseCase: FetchPrayerTimesUseCase by lazy {
+    //  FetchPrayerTimesUseCase(prayerRepository)
+    //}
+
+    val fetchPrayerTimesUseCase = FetchPrayerTimesUseCase()
 }

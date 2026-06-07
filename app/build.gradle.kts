@@ -73,4 +73,8 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+
+    // Güncel ve tam uyumlu Sünni hesaplama motoru (Maven Central)
+    implementation("com.batoulapps.adhan:adhan:1.2.1")
+
 }
