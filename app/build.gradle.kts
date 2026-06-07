@@ -1,9 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
-
-    // TIRE YERİNE NOKTA:
-    alias(libs.plugins.google.devtools.ksp) // KSP altyapısı aktif edildi
+    alias(libs.plugins.google.devtools.ksp)
 }
 
 android {
@@ -54,29 +52,24 @@ android {
 }
 
 dependencies {
-    // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
 
-    // Jetpack Compose UI
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    // Room Database mit KSP (2x schnellerer Build)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler) //Von kapt zu ksp gewechselt!
+    ksp(libs.androidx.room.compiler)
 
-    // Hintergrunddienste & Medien
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.media3.exoplayer)
 
-    // Standort & Netzwerk
     implementation(libs.play.services.location)
     implementation(libs.retrofit)
     implementation(libs.converter.gson)

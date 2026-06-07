@@ -1,39 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    AndroidManifest.xml: Uygulamanın kimlik kartıdır.
-    xmlns:android -> Android sistem bileşenlerini tanımak için gerekli olan resmi şema adresidir (Düzeltildi).
-    xmlns:tools -> Derleme esnasında çakışan servis özelliklerini ezmek/değiştirmek için kullanılan araçlar şeması.
--->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://android.com">
 
-    <!-- - UYGULAMA İZİNLERİ (PERMISSIONS) - -->
-
-    <!-- İnternet İzni: AlAdhan API sunucusundan aylık namaz vakitlerini indirmek için zorunludur. -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Hassas Konum İzni: Cihazın GPS uydularına bağlanarak tam enlem ve boylam koordinatlarını çekmesini sağlar. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-
-    <!-- Yaklaşık Konum İzni: GPS çekmediğinde baz istasyonları veya Wi-Fi üzerinden kabaca konum bulmayı sağlar. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- Ön Plan Servis İzni: Android sisteminin, ezan çalarken servisi arka planda kapatmasını engeller. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Uyanıklık Kilidi İzni: Cihaz derin uykudayken (Doze Mode) tam ezan vaktinde işlemciyi uyandırmak için kullanılır. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- Açılış Tamamlandı İzni: Telefon kapatılıp açıldığında (Reboot) arka planda sessizce uyanıp alarmları kurmak için gerekir. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- Medya Oynatım İzni: Android 14+ cihazlarda ön plan servisinin ses (MP3) oynatabilmesi için zorunlu olan özel izindir. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-
-    <!-- Kesin Alarm İzni: Ezan alarmlarının saniyesi saniyesine, işletim sistemi tarafından ertelenmeden tetiklenmesini sağlar. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- - UYGULAMA BİLEŞENLERİ (APPLICATION) - -->
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
@@ -42,29 +19,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DesktopClock"
-        android:usesCleartextTraffic="true"> <!-- usesCleartextTraffic: HTTP (güvensiz) bağlantılara da izin verir, API güvenliği için eklendi -->
+        android:usesCleartextTraffic="true">
 
-        <!-- - ANA EKRAN AKTİVİTESİ (MAIN ACTIVITY) - -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.DesktopClock"
-            android:configChanges="orientation|screenSize|layoutDirection|screenLayout"> <!-- configChanges: Tablet yatay/dikey döndüğünde ekranın çökmesini önler -->
-
-            <!-- Bu intent-filter, uygulamanın ikonuna basıldığında İLK olarak bu ekranın açılacağını belirtir (LAUNCHER). -->
+            android:configChanges="orientation|screenSize|layoutDirection|screenLayout">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- - ARKA PLAN EZAN SES SERVİSİ (SERVICE) - -->
-        <!--
-            AzanPlaybackService: Namaz vakitlerinde ezanı okuyan arka plan işçisidir.
-            android:exported="false" -> Diğer yabancı uygulamaların bu servisi dışarıdan sabote etmesini engeller.
-            foregroundServiceType="mediaPlayback" -> İşletim sistemine bu servisin bir ses oynatıcı olduğunu bildirir.
-            tools:replace -> Başka kütüphanelerle servis türü çakışırsa sizin yazdığınız türün geçerli olmasını sağlar.
-        -->
         <service
             android:name=".presentation.service.AzanPlaybackService"
             android:enabled="true"

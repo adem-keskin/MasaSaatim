@@ -1,8 +1,9 @@
 package com.masasaatim.presentation
 
-// Android sistem bileşenleri, Yaşam döngüsü (Lifecycle), Coroutine ve Zaman hesaplama kütüphaneleri içe aktarılıyor.
 import android.app.Application
 import android.content.Intent
+import android.location.Geocoder
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
@@ -25,17 +26,12 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-/**
- * Final Senior-Level ViewModel: Saat durumunu, otomatik ekran karartmayı (Auto-Dimming),
- * AMOLED ekran koruyucuyu, arka plan ezan ses servisini ve donmayan asenkron konum/ağ senkronizasyonunu yönetir.
- */
 class MainViewModel(
     application: Application,
     private val getPrayerTimeUseCase: GetPrayerTimeUseCase,
     private val fetchPrayerTimesUseCase: FetchPrayerTimesUseCase
 ) : AndroidViewModel(application) {
 
-    // --- REAKTİF DURUM AKIŞLARI (StateFlow) ---
     private val _currentTime = MutableStateFlow("")
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
@@ -54,7 +50,9 @@ class MainViewModel(
     private val _isAzanPlaying = MutableStateFlow(false)
     val isAzanPlaying: StateFlow<Boolean> = _isAzanPlaying.asStateFlow()
 
-    // --- ZAMAN DÖNGÜSÜ (Saniyelik Saat Güncelleyici) ---
+    private val _locationName = MutableStateFlow("Lade Standort...")
+    val locationName: StateFlow<String> = _locationName.asStateFlow()
+
     private val handler = Handler(Looper.getMainLooper())
     private val timeRunnable = object : Runnable {
         override fun run() {
@@ -64,22 +62,16 @@ class MainViewModel(
     }
 
     init {
-        // Döngüyü başlat
         handler.post(timeRunnable)
 
-        // --- ASENKRON GÜVENLİK AĞI (Safety Net) ---
-        // Uygulama açıldıktan 1.5 saniye sonra veri tabanı hala boşsa otomatik senkronizasyonu tetikler.
         Handler(Looper.getMainLooper()).postDelayed({
             if (_prayerTimes.value == null) {
                 android.util.Log.d("MasaSaatim", "Açılışta veri tabanı boş çıktı. Otomatik senkronizasyon zorlanıyor...")
-                loadPrayerDataWithLocation(41.0082, 28.9784) // Yedek İstanbul koordinatları
+                loadPrayerDataWithLocation(41.0082, 28.9784)
             }
         }, 1500)
     }
 
-    /**
-     * updateLiveTime: Canlı saati ve otomatik loş modu (Auto-Dimming) kontrol eder.
-     */
     private fun updateLiveTime() {
         val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
         val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
@@ -90,7 +82,6 @@ class MainViewModel(
         val calendar = Calendar.getInstance()
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
 
-        // Akşam 22:00 ile Sabah 06:00 arası loş modu aktif et
         val shouldDim = currentHour !in 6..21
         if (_isDimmedMode.value != shouldDim) {
             _isDimmedMode.value = shouldDim
@@ -99,10 +90,49 @@ class MainViewModel(
         _prayerTimes.value?.let { calculateRemainingTime(it) }
     }
 
-    /**
-     * loadPrayerDataWithLocation: Room veri tabanını canlı dinler, veri yoksa API'ye istek atar.
-     */
-    fun loadPrayerDataWithLocation(latitude: Double? = null, longitude: Double? = null) {
+    private fun fetchCityNameFromCoordinates(latitude: Double, longitude: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>().applicationContext
+                val geocoder = Geocoder(context, Locale("tr"))
+
+                // Adres nesnesinden şehir ismini ayıklayan yardımcı fonksiyon
+                val extractCity: (android.location.Address?) -> String = { address ->
+                    // 1. Tercih: Doğrudan İlçe/Şehir (Örn: Augustdorf, Kadıköy)
+                    // 2. Tercih: Büyükşehir/Merkez (Örn: Detmold, İstanbul)
+                    // 3. Tercih: Hiçbiri bulunamazsa Eyalet/Bölge (Örn: Nordrhein-Westfalen)
+                    address?.locality
+                        ?: address?.subAdminArea
+                        ?: address?.adminArea
+                        ?: "Bilinmeyen Konum"
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocation(latitude, longitude, 1) { addresses ->
+                        val city = extractCity(addresses.firstOrNull())
+                        _locationName.value = city
+                    }
+                } else {
+                    val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+                    val city = extractCity(addresses?.firstOrNull())
+                    _locationName.value = city
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MasaSaatim", "Geocoder Hatası: ${e.localizedMessage}")
+                _locationName.value = "Konum Alınamadı"
+            }
+        }
+    }
+
+
+    fun loadPrayerDataWithLocation(
+        latitude: Double? = null,
+        longitude: Double? = null
+    ) {
+        if (latitude != null && longitude != null) {
+            fetchCityNameFromCoordinates(latitude, longitude)
+        }
+
         viewModelScope.launch(Dispatchers.Main) {
             val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
@@ -127,9 +157,6 @@ class MainViewModel(
         }
     }
 
-    /**
-     * calculateRemainingTime: Geri sayımı hesaplar ve tam ezan saniyesinde servisi tetikler.
-     */
     private fun calculateRemainingTime(prayer: PrayerTime) {
         val now = Calendar.getInstance()
         val currentMs = now.timeInMillis
@@ -162,148 +189,92 @@ class MainViewModel(
         }
 
         if (nextVakitMs == 0L) {
-            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+            val tomorrow = Calendar.getInstance()
+            tomorrow.add(Calendar.DAY_OF_YEAR, 1)
             val tomorrowStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(tomorrow.time)
-            val imsakDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                .parse(tomorrowStr + prayer.imsak)
-            nextVakitMs = imsakDate?.time ?: 0L
-            nextVakitName = "imsak"
+            try {
+                val imsakDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                    .parse(tomorrowStr + prayer.imsak)
+                if (imsakDate != null) {
+                    nextVakitMs = imsakDate.time
+                    nextVakitName = "imsak"
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
-        val diff = nextVakitMs - currentMs
+        val diffMs = nextVakitMs - currentMs
+        if (diffMs > 0) {
+            if (diffMs <= 1000L && !_isAzanPlaying.value && nextVakitName != "sunrise") {
+                triggerAzanService(nextVakitName)
+            }
 
-        // --- MILISANIYELIK TAM ZAMANLI TETIKLEYICI ---
-        if (diff in 0..999 && currentMs % 60000 < 1500) {
-            _isAzanPlaying.value = true
-            triggerAzanService(nextVakitName)
-        }
-
-        val hours = TimeUnit.MILLISECONDS.toHours(diff)
-        val minutes = TimeUnit.MILLISECONDS.toMinutes(diff) % 60
-        val seconds = TimeUnit.MILLISECONDS.toSeconds(diff) % 60
-
-        _remainingTime.value = String.format(
-            Locale.getDefault(),
-            "%s vaktine %02d:%02d:%02d kaldı",
-            nextVakitName.uppercase(Locale.getDefault()),
-            hours,
-            minutes,
-            seconds
-        )
-    }
-
-    /**
-     * triggerAzanService: Foreground (Ön Plan) ezan ses servisini başlatır.
-     */
-    private fun triggerAzanService(prayerType: String) {
-        val intent = Intent(getApplication(), AzanPlaybackService::class.java).apply {
-            putExtra(AzanPlaybackService.EXTRA_PRAYER_TYPE, prayerType.lowercase(Locale.getDefault()))
-            putExtra(AzanPlaybackService.EXTRA_IS_DIMMED, _isDimmedMode.value)
-        }
-        getApplication<Application>().startForegroundService(intent)
-    }
-
-    /**
-     * simulateAzanTrigger: Ekrandaki 'Oynat' ikonuna basıldığında ezanı anında test etmek için tetiklenir.
-     */
-    fun simulateAzanTrigger() {
-        viewModelScope.launch {
-            val currentVakit = _remainingTime.value.substringBefore(" ").lowercase(Locale.getDefault())
-            val targetVakit = if (currentVakit.contains("calculating") || currentVakit.contains("vaktine")) "dhuhr" else currentVakit
-
-            _isAzanPlaying.value = true
-            triggerAzanService(targetVakit)
+            val hours = TimeUnit.MILLISECONDS.toHours(diffMs)
+            val minutes = TimeUnit.MILLISECONDS.toMinutes(diffMs) % 60
+            val seconds = TimeUnit.MILLISECONDS.toSeconds(diffMs) % 60
+            _remainingTime.value = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            _remainingTime.value = "00:00:00"
         }
     }
 
-    /**
-     * stopAzanPlayback: Ekrandaki 'Durdur' butonuna basıldığında çalan ezan servisini anında susturur.
-     */
-    fun stopAzanPlayback() {
-        _isAzanPlaying.value = false
-        val intent = Intent(getApplication(), AzanPlaybackService::class.java).apply {
-            action = AzanPlaybackService.ACTION_STOP_AZAN
-        }
-        getApplication<Application>().startService(intent)
-    }
-
-    /**
-     * onCleared: Bellek sızıntılarını önlemek için zamanlayıcı döngüyü temizler.
-     */
     override fun onCleared() {
         handler.removeCallbacks(timeRunnable)
         super.onCleared()
     }
-    // --- YENİ KONUM STATEFLOW AKIŞINI EKLEYİN (Diğer StateFlow'ların altına koyabilirsiniz) ---
-    private val _locationName = MutableStateFlow("Hesaplanıyor...")
-    val locationName: StateFlow<String> = _locationName.asStateFlow()
 
-    // --- GÜNCELLENMİŞ COĞRAFİ KODLAYICILI KONUM MOTORU ---
-    fun loadPrayerDataWithLocation(latitude: Double? = null, longitude: Double? = null) {
-        viewModelScope.launch(Dispatchers.Main) {
-            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-
-            val lat = latitude ?: 51.9311
-            val lon = longitude ?: 8.8681
-
-            // --- SENIOR GEOCODER MOTORU: Koordinatı asenkron olarak şehir ismine çevirir ---
-            viewModelScope.launch(Dispatchers.IO) {
-                try {
-                    // Cihazın sistem diline göre (Locale.getDefault()) bir coğrafi kodlayıcı başlatılır
-                    val geocoder = android.location.Geocoder(getApplication(), Locale.getDefault())
-                    // En kararlı API 26+ uyumluluğu gözetilerek maksimum 1 adres sonucu istenir
-                    val addresses = geocoder.getFromLocation(lat, lon, 1)
-
-                    if (!addresses.isNullOrEmpty()) {
-                        // Önce şehir merkez adını (locality) al, null ise il/bölge adını (adminArea) al
-                        val cityName = addresses[0].locality ?: addresses[0].adminArea ?: "Bilinmeyen Yer"
-                        _locationName.value = cityName
-                    } else {
-                        // Eğer uydudan isim dönmezse koordinat moduna göre yedek isim ata
-                        _locationName.value = if (lat == 51.9311) "Augustdorf" else "Konum Sabitlendi"
-                    }
-                } catch (e: Exception) {
-                    // İnternet olmaması veya Geocoder sunucusunun gecikmesi durumunda çökmemesi için koruma kalkanı
-                    _locationName.value = if (lat == 51.9311) "Augustdorf (Yedek)" else "Masa Saati"
-                }
-            }
-
-            // Room veri tabanından bugünün vaktini sorgulayan akışı başlat
-            getPrayerTimeUseCase(todayStr).collect { prayerTime ->
-                if (prayerTime != null) {
-                    _prayerTimes.value = prayerTime
-                } else {
-                    viewModelScope.launch(Dispatchers.IO) {
-                        fetchPrayerTimesUseCase(lat, lon).onSuccess {
-                            viewModelScope.launch(Dispatchers.Main) {
-                                updateLiveTime()
-                            }
-                        }.onFailure { error ->
-                            android.util.Log.e("MasaSaatim", "Sync Failed: ${error.localizedMessage}")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-    /**
-     * provideFactory: ViewModel'in AppContainer üzerinden güvenle enjekte edilerek başlatılmasını sağlar.
-     */
     companion object {
-        fun provideFactory(
-            application: Application
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val container = (application as MainApplication).appContainer
-                return MainViewModel(
-                    application = application,
-                    getPrayerTimeUseCase = container.getPrayerTimeUseCase,
-                    fetchPrayerTimesUseCase = container.fetchPrayerTimesUseCase // DÜZELTİLDİ: Orijinal değişken adı bağlandı!
-                ) as T
+        fun provideFactory(application: Application): ViewModelProvider.Factory {
+            return object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    val appContainer = (application as MainApplication).appContainer
+                    return MainViewModel(
+                        application,
+                        appContainer.getPrayerTimeUseCase,
+                        appContainer.fetchPrayerTimesUseCase
+                    ) as T
+                }
             }
         }
     }
+    // Funktion zum Auslösen des eigentlichen Hintergrunddienstes
+    private fun triggerAzanService(vakitName: String) {
+        viewModelScope.launch(Dispatchers.Main) {
+            _isAzanPlaying.value = true
+            val context = getApplication<Application>().applicationContext
+            val intent = Intent(context, AzanPlaybackService::class.java).apply {
+                action = "START_AZAN"
+                putExtra("VAKIT_NAME", vakitName)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+    }
+
+    // UI- oder Test-Button-Simulation
+    fun simulateAzanTrigger() {
+        android.util.Log.d("MasaSaatim", "Ezan çalma simülasyonu başlatıldı.")
+        triggerAzanService("test_vakit")
+    }
+
+    // HIER IST DIE FEHLENDE FUNKTION:
+    // Wird vom "Sustur"-Button im MainScreen aufgerufen
+    fun stopAzanPlayback() {
+        viewModelScope.launch(Dispatchers.Main) {
+            _isAzanPlaying.value = false
+            val context = getApplication<Application>().applicationContext
+            val intent = Intent(context, AzanPlaybackService::class.java).apply {
+                action = "STOP_AZAN"
+            }
+            context.startService(intent)
+            android.util.Log.d("MasaSaatim", "Ezan servisine durdurma emri gönderildi.")
+        }
+    }
+// HIER ENDET DIE KLASSE (Letzte Klammer der MainViewModel-Klasse)
+
 }

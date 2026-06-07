@@ -1,7 +1,7 @@
 [versions]
 agp = "8.2.2"
 kotlin = "1.9.22"
-ksp = "1.9.22-1.0.17" # Passend zur Kotlin-Version deklariert
+ksp = "1.9.22-1.0.17"
 coreKtx = "1.12.0"
 lifecycleRuntimeKtx = "2.7.0"
 activityCompose = "1.8.2"
@@ -35,4 +35,3 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-
