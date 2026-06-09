@@ -2,15 +2,43 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://android.com">
 
+    <!-- ========================================================================= -->
+    <!--                            UYGULAMA İZİNLERİ                              -->
+    <!-- ========================================================================= -->
+
+    <!-- İnternet İzni: Aladhan API'sinden aylık ezan vakitlerini indirmek için zorunludur -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Hassas Konum İzni: GPS uydularını kullanarak tam koordinat (enlem/boylam) almak için kullanılır -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Yaklaşık Konum İzni: Baz istasyonları ve Wi-Fi üzerinden kabaca konum tespiti için kullanılır -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Ön Plan Servis İzni: Arka planda ezan çalarken sistemin servisi kapatmasını önlemek için genel izin (Android 9+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Wake Lock İzni: Cihaz derin uyku moduna (Doze modu) geçse bile ezan vaktinde işlemciyi anlık uyandırmak için -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Cihaz Başlatıldı İzni: Telefon kapanıp açıldığında ezan alarmlarını arka planda otomatik yeniden kurmak için -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Medya Oynatma İzni: Android 14 (API 34)+ cihazlarda ön planda müzik/ezan çalabilmek için özel Foreground izni -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Tam Zamanlı Alarm İzni: Ezan vakitlerinin milisaniyesi saniyesine, gecikmeden tam vaktinde tetiklenebilmesi için (Android 12+) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
+    <!-- Bildirim İzni: Android 13 (API 33)+ cihazlarda kilit ekranında ve bildirim çubuğunda ezan panelini göstermek için zorunludur -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Kesin Alarm İzni: Android 14+ cihazlarda işletim sistemi kısıtlamalarına takılmadan ezanı tam saniyesinde tetiklemek için en yüksek öncelikli izin -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- ========================================================================= -->
+    <!--                          UYGULAMA BİLEŞENLERİ                             -->
+    <!-- ========================================================================= -->
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
@@ -21,6 +49,7 @@
         android:theme="@style/Theme.DesktopClock"
         android:usesCleartextTraffic="true">
 
+        <!-- 1. ANA EKRAN (MAINACTIONITY) TANIMLAMASI -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -32,6 +61,7 @@
             </intent-filter>
         </activity>
 
+        <!-- 2. ARKA PLAN EZAN OYNATMA SERVİSİ TANIMLAMASI -->
         <service
             android:name=".presentation.service.AzanPlaybackService"
             android:enabled="true"

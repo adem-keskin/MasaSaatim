@@ -12,9 +12,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.masasaatim.MainApplication
 import com.masasaatim.domain.model.PrayerTime
-import com.masasaatim.domain.usecase.FetchPrayerTimesUseCase
+import com.masasaatim.domain.model.SavedLocation
 import com.masasaatim.domain.usecase.GetPrayerTimeUseCase
 import com.masasaatim.presentation.service.AzanPlaybackService
+import com.masasaatim.domain.repository.PrayerRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,9 +30,10 @@ import java.util.concurrent.TimeUnit
 class MainViewModel(
     application: Application,
     private val getPrayerTimeUseCase: GetPrayerTimeUseCase,
-    private val fetchPrayerTimesUseCase: FetchPrayerTimesUseCase
+    private val prayerRepository: PrayerRepository
 ) : AndroidViewModel(application) {
 
+    // --- DETAYLI KLASİK EKRAN DEĞİŞKENLERİ ---
     private val _currentTime = MutableStateFlow("")
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
@@ -41,7 +43,7 @@ class MainViewModel(
     private val _prayerTimes = MutableStateFlow<PrayerTime?>(null)
     val prayerTimes: StateFlow<PrayerTime?> = _prayerTimes.asStateFlow()
 
-    private val _remainingTime = MutableStateFlow("Calculating...")
+    private val _remainingTime = MutableStateFlow("Hesaplanıyor...")
     val remainingTime: StateFlow<String> = _remainingTime.asStateFlow()
 
     private val _isDimmedMode = MutableStateFlow(false)
@@ -50,8 +52,28 @@ class MainViewModel(
     private val _isAzanPlaying = MutableStateFlow(false)
     val isAzanPlaying: StateFlow<Boolean> = _isAzanPlaying.asStateFlow()
 
-    private val _locationName = MutableStateFlow("Lade Standort...")
+    private val _locationName = MutableStateFlow("Konum yükleniyor...")
     val locationName: StateFlow<String> = _locationName.asStateFlow()
+
+    private val _showSettingsDialog = MutableStateFlow(false)
+    val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
+
+    // --- MİNİMALİST GECE EKRANI DEĞİŞKENLERİ ---
+    private val _isAlternativeUi = MutableStateFlow(false)
+    val isAlternativeUi: StateFlow<Boolean> = _isAlternativeUi.asStateFlow()
+
+    private val _minimalTime = MutableStateFlow("")
+    val minimalTime: StateFlow<String> = _minimalTime.asStateFlow()
+
+    private val _minimalDate = MutableStateFlow("")
+    val minimalDate: StateFlow<String> = _minimalDate.asStateFlow()
+
+    private val _nextVakitName = MutableStateFlow("")
+    val nextVakitName: StateFlow<String> = _nextVakitName.asStateFlow()
+
+    // --- VARSAYILAN BAŞLANGIÇ KONFİGÜRASYONU ---
+    private val _currentConfig = MutableStateFlow(SavedLocation("Augustdorf", 51.9311, 8.8681, false))
+    val currentConfig: StateFlow<SavedLocation> = _currentConfig.asStateFlow()
 
     private val handler = Handler(Looper.getMainLooper())
     private val timeRunnable = object : Runnable {
@@ -60,75 +82,133 @@ class MainViewModel(
             handler.postDelayed(this, 1000)
         }
     }
-
     init {
+        // Saniyelik canlı saat döngüsünü başlatır
         handler.post(timeRunnable)
 
+        // Veritabanı boşsa arayüzün takılı kalmaması için İstanbul koordinatlarını yükler
         Handler(Looper.getMainLooper()).postDelayed({
             if (_prayerTimes.value == null) {
-                android.util.Log.d("MasaSaatim", "Açılışta veri tabanı boş çıktı. Otomatik senkronizasyon zorlanıyor...")
+                android.util.Log.d("MasaSaatim", "Açılışta veritabanı boş. Tetikleniyor...")
                 loadPrayerDataWithLocation(41.0082, 28.9784)
             }
         }, 1500)
     }
 
-    private fun updateLiveTime() {
-        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
-        val now = Date()
-        _currentTime.value = timeFormat.format(now)
-        _currentDate.value = dateFormat.format(now)
-
-        val calendar = Calendar.getInstance()
-        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
-
-        val shouldDim = currentHour !in 6..21
-        if (_isDimmedMode.value != shouldDim) {
-            _isDimmedMode.value = shouldDim
-        }
-
-        _prayerTimes.value?.let { calculateRemainingTime(it) }
+    fun setSettingsDialogVisible(visible: Boolean) {
+        _showSettingsDialog.value = visible
     }
 
-    private fun fetchCityNameFromCoordinates(latitude: Double, longitude: Double) {
+    fun toggleUiMode() {
+        _isAlternativeUi.value = !_isAlternativeUi.value
+    }
+
+    fun toggleAutomaticLocation(enable: Boolean) {
+        _currentConfig.value = _currentConfig.value.copy(isAutomatic = enable)
+        if (enable) {
+            _locationName.value = "GPS Aranıyor..."
+        }
+    }
+
+    /**
+     * MANUEL SEÇENEK: Kullanıcı el ile şehir yazdığında koordinatları çözer ve Repository'ye gönderir.
+     */
+    fun updateLocationManually(cityName: String) {
+        if (cityName.isBlank()) return
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val context = getApplication<Application>().applicationContext
                 val geocoder = Geocoder(context, Locale("tr"))
+                val addresses = geocoder.getFromLocationName(cityName, 1)
+                val address = addresses?.firstOrNull()
 
-                // Adres nesnesinden şehir ismini ayıklayan yardımcı fonksiyon
-                val extractCity: (android.location.Address?) -> String = { address ->
-                    // 1. Tercih: Doğrudan İlçe/Şehir (Örn: Augustdorf, Kadıköy)
-                    // 2. Tercih: Büyükşehir/Merkez (Örn: Detmold, İstanbul)
-                    // 3. Tercih: Hiçbiri bulunamazsa Eyalet/Bölge (Örn: Nordrhein-Westfalen)
-                    address?.locality
-                        ?: address?.subAdminArea
-                        ?: address?.adminArea
-                        ?: "Bilinmeyen Konum"
-                }
+                if (address != null) {
+                    val lat = address.latitude
+                    val lon = address.longitude
+                    val finalCityName = address.locality ?: address.adminArea ?: cityName
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    geocoder.getFromLocation(latitude, longitude, 1) { addresses ->
-                        val city = extractCity(addresses.firstOrNull())
-                        _locationName.value = city
+                    // Eski kararlı koordinat yapısına güvenle geri dönüldü:
+                    prayerRepository.fetchAndSaveRemotePrayerTimes(lat, lon).onSuccess {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _currentConfig.value = SavedLocation(finalCityName, lat, lon, false)
+                            _locationName.value = finalCityName
+                            updateLiveTime()
+                            setSettingsDialogVisible(false)
+                        }
+                    }.onFailure { error ->
+                        android.util.Log.e("MasaSaatim", "Senkronizasyon hatası: ${error.localizedMessage}")
                     }
-                } else {
-                    val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                    val city = extractCity(addresses?.firstOrNull())
-                    _locationName.value = city
                 }
             } catch (e: Exception) {
-                android.util.Log.e("MasaSaatim", "Geocoder Hatası: ${e.localizedMessage}")
-                _locationName.value = "Konum Alınamadı"
+                android.util.Log.e("MasaSaatim", "Geocoder hatası: ${e.localizedMessage}")
             }
         }
     }
 
+    /**
+     * OTOMATİK SEÇENEK: GPS donanımından gelen koordinatları işler.
+     */
+    fun updateLocationAutomatically(cityName: String, lat: Double, lon: Double) {
+        if (_currentConfig.value.isAutomatic) {
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val context = getApplication<Application>().applicationContext
+                    val geocoder = Geocoder(context, Locale("tr"))
+                    val addresses = geocoder.getFromLocation(lat, lon, 1)
+                    val address = addresses?.firstOrNull()
 
-    fun loadPrayerDataWithLocation(
-        latitude: Double? = null,
-        longitude: Double? = null
-    ) {
+                    val realCityName = address?.locality
+                        ?: address?.subAdminArea
+                        ?: address?.adminArea
+                        ?: "Bilinmeyen Konum"
+
+                    // Eski kararlı koordinat yapısına güvenle geri dönüldü:
+                    prayerRepository.fetchAndSaveRemotePrayerTimes(lat, lon).onSuccess {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            _currentConfig.value = SavedLocation(realCityName, lat, lon, true)
+                            _locationName.value = realCityName
+                            updateLiveTime()
+                        }
+                    }.onFailure { error ->
+                        android.util.Log.e("MasaSaatimGPS", "GPS veri indirme hatası: ${error.localizedMessage}")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("MasaSaatimGPS", "GPS Geocoder hatası: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+    /**
+     * VERİTABANI BAĞLANTISI: Room'dan verileri çeker veya eksikse internetten koordinatla ister.
+     */
+    /**
+     * DİYANET TEMKİN MOTORU (YARDIMCI FONKSİYON)
+     * Bir saate (Örn: "04:12") ilgili vaktin Diyanet temkin dakikasını uygular ve yeni saati String döner.
+     */
+    private fun applyTemkinToTimeString(vakitName: String, timeStr: String): String {
+        val diyanetTemkinPayi = mapOf(
+            "imsak" to +39, "sunrise" to +1, "dhuhr" to 0, "asr" to 0, "maghrib" to 0, "isha" to -41
+        )
+        return try {
+            val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val date = sdf.parse(timeStr)
+            if (date != null) {
+                val cal = Calendar.getInstance().apply { time = date }
+                val sapma = diyanetTemkinPayi[vakitName] ?: 0
+                cal.add(Calendar.MINUTE, sapma)
+                sdf.format(cal.time)
+            } else timeStr
+        } catch (e: Exception) {
+            timeStr
+        }
+    }
+
+    /**
+     * VERİTABANI BAĞLANTISI: Room'dan verileri çeker.
+     * 🎯 ARTIK SAĞ PANELDEKİ YAZILAR DA BURADA TEMKİN MOTORUNDAN GEÇİRİLİP FİLTRELENİYOR!
+     */
+    fun loadPrayerDataWithLocation(latitude: Double? = null, longitude: Double? = null) {
         if (latitude != null && longitude != null) {
             fetchCityNameFromCoordinates(latitude, longitude)
         }
@@ -138,49 +218,47 @@ class MainViewModel(
 
             getPrayerTimeUseCase(todayStr).collect { prayerTime ->
                 if (prayerTime != null) {
-                    _prayerTimes.value = prayerTime
-//                } else {
-//                    val lat = latitude ?: 51.9311
-//                    val lon = longitude ?: 8.8681
-//
-//                    viewModelScope.launch(Dispatchers.IO) {
-//                        fetchPrayerTimesUseCase(lat, lon).onSuccess {
-//                            viewModelScope.launch(Dispatchers.Main) {
-//                                updateLiveTime()
-//                            }
-//                        }.onFailure { error ->
-//                            android.util.Log.e("MasaSaatim", "Senkronizasyon Hatası: ${error.localizedMessage}")
-//                        }
-//                    }
-//                }
-                    // Suchen Sie diesen Bereich in MainViewModel.kt und passen Sie ihn an:
+                    // 🎯 TEMKİN ENJEKSİYONU: Sağ panelde listelenecek saatleri Diyanet paylarıyla düzeltiyoruz
+                    val correctedPrayerTime = PrayerTime(
+                        date = prayerTime.date,
+                        imsak = applyTemkinToTimeString("imsak", prayerTime.imsak),
+                        gunes = applyTemkinToTimeString("sunrise", prayerTime.gunes),
+                        ogle = applyTemkinToTimeString("dhuhr", prayerTime.ogle),
+                        ikindi = applyTemkinToTimeString("asr", prayerTime.ikindi),
+                        aksam = applyTemkinToTimeString("maghrib", prayerTime.aksam),
+                        yatsi = applyTemkinToTimeString("isha", prayerTime.yatsi)
+                    )
+                    _prayerTimes.value = correctedPrayerTime
                 } else {
-                    val lat = latitude ?: 51.9311  // Standard-Breitengrad (z.B. Augustdorf)
-                    val lon = longitude ?: 8.8681  // Standard-Längengrad
+                    val lat = latitude ?: 51.9311
+                    val lon = longitude ?: 8.8681
 
-                    // Berechnung direkt offline über den neuen UseCase starten
-                    val offlineResult = fetchPrayerTimesUseCase(lat, lon)
-
-                    offlineResult.onSuccess { computedTimes ->
-                        viewModelScope.launch(Dispatchers.Main) {
-                            _prayerTimes.value = computedTimes
-                            updateLiveTime()
-                            android.util.Log.d("MasaSaatim", "Gebetszeiten erfolgreich offline berechnet!")
+                    viewModelScope.launch(Dispatchers.IO) {
+                        prayerRepository.fetchAndSaveRemotePrayerTimes(lat, lon).onSuccess {
+                            viewModelScope.launch(Dispatchers.Main) {
+                                updateLiveTime()
+                            }
+                        }.onFailure { error ->
+                            android.util.Log.e("MasaSaatim", "Geri plan yükleme hatası: ${error.localizedMessage}")
                         }
-                    }.onFailure { error ->
-                        android.util.Log.e("MasaSaatim", "Fehler bei Offline-Berechnung: ${error.localizedMessage}")
                     }
                 }
-
             }
         }
     }
 
+    /**
+     * DİYANET TEMKİN MOTORU DESTEKLİ GERİ SAYIM SİSTEMİ
+     * Not: _prayerTimes artık yukarıda filtrelendiği için, bu fonksiyonun içindeki
+     * listeyi doğrudan filtrelenmiş saatler üzerinden okutarak çelişkileri önlüyoruz.
+     */
     private fun calculateRemainingTime(prayer: PrayerTime) {
         val now = Calendar.getInstance()
         val currentMs = now.timeInMillis
         val todayStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(Date())
 
+        // Saatler loadPrayerDataWithLocation içinde zaten düzeltildiği için ham temkin eklemelerini buradan kaldırıp
+        // doğrudan arayüzdeki (filtrelenmiş) saatlerle senkron çalıştırıyoruz.
         val prayerList = listOf(
             Pair("imsak", prayer.imsak),
             Pair("sunrise", prayer.gunes),
@@ -195,8 +273,9 @@ class MainViewModel(
 
         for (vakit in prayerList) {
             try {
-                val vakitDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                    .parse(todayStr + vakit.second)
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                val vakitDate = sdf.parse(todayStr + vakit.second)
+
                 if (vakitDate != null && vakitDate.time > currentMs) {
                     nextVakitName = vakit.first
                     nextVakitMs = vakitDate.time
@@ -207,13 +286,23 @@ class MainViewModel(
             }
         }
 
+        val turkishVakitName = when (nextVakitName) {
+            "imsak" -> "İmsak"
+            "sunrise" -> "Güneş"
+            "dhuhr" -> "Öğle"
+            "asr" -> "İkindi"
+            "maghrib" -> "Akşam"
+            "isha" -> "Yatsı"
+            else -> "İmsak"
+        }
+        _nextVakitName.value = turkishVakitName
+
         if (nextVakitMs == 0L) {
-            val tomorrow = Calendar.getInstance()
-            tomorrow.add(Calendar.DAY_OF_YEAR, 1)
+            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
             val tomorrowStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(tomorrow.time)
             try {
-                val imsakDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                    .parse(tomorrowStr + prayer.imsak)
+                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                val imsakDate = sdf.parse(tomorrowStr + prayer.imsak)
                 if (imsakDate != null) {
                     nextVakitMs = imsakDate.time
                     nextVakitName = "imsak"
@@ -238,6 +327,93 @@ class MainViewModel(
         }
     }
 
+
+    private fun updateLiveTime() {
+        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
+        val now = Date()
+
+        _currentTime.value = timeFormat.format(now)
+        _currentDate.value = dateFormat.format(now)
+
+        val minimalTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val minimalDateFormat = SimpleDateFormat("dd EEEE", Locale("tr"))
+        _minimalTime.value = minimalTimeFormat.format(now)
+        _minimalDate.value = minimalDateFormat.format(now)
+
+        // Gece 22:00 ile sabah 05:59 arası otomatik karartma
+        val calendar = Calendar.getInstance()
+        val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
+        val shouldDim = currentHour !in 6..21
+        if (_isDimmedMode.value != shouldDim) {
+            _isDimmedMode.value = shouldDim
+        }
+
+        _prayerTimes.value?.let { calculateRemainingTime(it) }
+    }
+    /**
+     * DİYANET TEMKİN MOTORU DESTEKLİ GERİ SAYIM SİSTEMİ
+     * API'den gelen ham vakitleri fıkhi temkin paylarıyla düzelterek işler.
+     */
+
+
+
+    private fun fetchCityNameFromCoordinates(latitude: Double, longitude: Double) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>().applicationContext
+                val geocoder = Geocoder(context, Locale("tr"))
+
+                val extractCity: (android.location.Address?) -> String = { address ->
+                    address?.locality ?: address?.subAdminArea ?: address?.adminArea ?: "Bilinmeyen Konum"
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocation(latitude, longitude, 1) { addresses ->
+                        _locationName.value = extractCity(addresses.firstOrNull())
+                    }
+                } else {
+                    val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+                    _locationName.value = extractCity(addresses?.firstOrNull())
+                }
+            } catch (e: Exception) {
+                _locationName.value = "Konum Alınamadı"
+            }
+        }
+    }
+
+    private fun triggerAzanService(vakitName: String) {
+        viewModelScope.launch(Dispatchers.Main) {
+            _isAzanPlaying.value = true
+            val context = getApplication<Application>().applicationContext
+            val intent = Intent(context, AzanPlaybackService::class.java).apply {
+                action = AzanPlaybackService.ACTION_START_AZAN
+                putExtra(AzanPlaybackService.EXTRA_PRAYER_TYPE, vakitName)
+                putExtra(AzanPlaybackService.EXTRA_IS_DIMMED, _isDimmedMode.value)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
+    }
+
+    fun simulateAzanTrigger() {
+        triggerAzanService("test_vakit")
+    }
+
+    fun stopAzanPlayback() {
+        viewModelScope.launch(Dispatchers.Main) {
+            _isAzanPlaying.value = false
+            val context = getApplication<Application>().applicationContext
+            val intent = Intent(context, AzanPlaybackService::class.java).apply {
+                action = AzanPlaybackService.ACTION_STOP_AZAN
+            }
+            context.startService(intent)
+        }
+    }
+
     override fun onCleared() {
         handler.removeCallbacks(timeRunnable)
         super.onCleared()
@@ -252,48 +428,11 @@ class MainViewModel(
                     return MainViewModel(
                         application,
                         appContainer.getPrayerTimeUseCase,
-                        appContainer.fetchPrayerTimesUseCase
+                        appContainer.prayerRepository
                     ) as T
                 }
             }
         }
     }
-    // Funktion zum Auslösen des eigentlichen Hintergrunddienstes
-    private fun triggerAzanService(vakitName: String) {
-        viewModelScope.launch(Dispatchers.Main) {
-            _isAzanPlaying.value = true
-            val context = getApplication<Application>().applicationContext
-            val intent = Intent(context, AzanPlaybackService::class.java).apply {
-                action = "START_AZAN"
-                putExtra("VAKIT_NAME", vakitName)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        }
-    }
-
-    // UI- oder Test-Button-Simulation
-    fun simulateAzanTrigger() {
-        android.util.Log.d("MasaSaatim", "Ezan çalma simülasyonu başlatıldı.")
-        triggerAzanService("test_vakit")
-    }
-
-    // HIER IST DIE FEHLENDE FUNKTION:
-    // Wird vom "Sustur"-Button im MainScreen aufgerufen
-    fun stopAzanPlayback() {
-        viewModelScope.launch(Dispatchers.Main) {
-            _isAzanPlaying.value = false
-            val context = getApplication<Application>().applicationContext
-            val intent = Intent(context, AzanPlaybackService::class.java).apply {
-                action = "STOP_AZAN"
-            }
-            context.startService(intent)
-            android.util.Log.d("MasaSaatim", "Ezan servisine durdurma emri gönderildi.")
-        }
-    }
-// HIER ENDET DIE KLASSE (Letzte Klammer der MainViewModel-Klasse)
-
 }
+
