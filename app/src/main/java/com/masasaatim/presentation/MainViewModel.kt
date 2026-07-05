@@ -33,7 +33,7 @@ class MainViewModel(
     private val prayerRepository: PrayerRepository
 ) : AndroidViewModel(application) {
 
-    // --- DETAYLI KLASİK EKRAN DEĞİŞKENLERİ ---
+    // --- TEMİZLENMİŞ GÜNCEL STANDART DEĞİŞKENLER ---
     private val _currentTime = MutableStateFlow("")
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
@@ -58,20 +58,10 @@ class MainViewModel(
     private val _showSettingsDialog = MutableStateFlow(false)
     val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
 
-    // --- MİNİMALİST GECE EKRANI DEĞİŞKENLERİ ---
-    private val _isAlternativeUi = MutableStateFlow(false)
-    val isAlternativeUi: StateFlow<Boolean> = _isAlternativeUi.asStateFlow()
-
-    private val _minimalTime = MutableStateFlow("")
-    val minimalTime: StateFlow<String> = _minimalTime.asStateFlow()
-
-    private val _minimalDate = MutableStateFlow("")
-    val minimalDate: StateFlow<String> = _minimalDate.asStateFlow()
-
     private val _nextVakitName = MutableStateFlow("")
     val nextVakitName: StateFlow<String> = _nextVakitName.asStateFlow()
 
-    // --- VARSAYILAN BAŞLANGIÇ KONFİGÜRASYONU ---
+    // --- BAŞLANGIÇ KONFİGÜRASYONU ---
     private val _currentConfig = MutableStateFlow(SavedLocation("Augustdorf", 51.9311, 8.8681, false))
     val currentConfig: StateFlow<SavedLocation> = _currentConfig.asStateFlow()
 
@@ -82,27 +72,34 @@ class MainViewModel(
             handler.postDelayed(this, 1000)
         }
     }
+
     init {
         // Saniyelik canlı saat döngüsünü başlatır
         handler.post(timeRunnable)
 
-        // Veritabanı boşsa arayüzün takılı kalmaması için İstanbul koordinatlarını yükler
+        // 🌟 GÜNCELLEME: Eğer otomatik konum (GPS) açıksa direkt arama moduna geçsin
+        if (_currentConfig.value.isAutomatic) {
+            _locationName.value = "GPS Aranıyor..."
+        } else {
+            // Eğer manuel moddaysa, hafızadaki mevcut şehrin adını direkt ekrana yansıtsın
+            _locationName.value = _currentConfig.value.cityName
+        }
+
+        // Veritabanı veya internetten verileri çeken ana tetikleyici
         Handler(Looper.getMainLooper()).postDelayed({
             if (_prayerTimes.value == null) {
-                android.util.Log.d("MasaSaatim", "Açılışta veritabanı boş. Tetikleniyor...")
-                loadPrayerDataWithLocation(41.0082, 28.9784)
+                android.util.Log.d("MasaSaatim", "Açılışta veritabanı boş. Konum tetikleniyor...")
+
+                // Hafızadaki/Başlangıçtaki koordinatlara göre namaz vakitlerini ve konum adını otomatik yükler
+                loadPrayerDataWithLocation(_currentConfig.value.latitude, _currentConfig.value.longitude)
             }
         }, 1500)
     }
 
+
     fun setSettingsDialogVisible(visible: Boolean) {
         _showSettingsDialog.value = visible
     }
-
-    fun toggleUiMode() {
-        _isAlternativeUi.value = !_isAlternativeUi.value
-    }
-
     fun toggleAutomaticLocation(enable: Boolean) {
         _currentConfig.value = _currentConfig.value.copy(isAutomatic = enable)
         if (enable) {
@@ -111,7 +108,7 @@ class MainViewModel(
     }
 
     /**
-     * MANUEL SEÇENEK: Kullanıcı el ile şehir yazdığında koordinatları çözer ve Repository'ye gönderir.
+     * MANUEL SEÇENEK: Kullanıcı el ile şehir yazdığında koordinatları çözer.
      */
     fun updateLocationManually(cityName: String) {
         if (cityName.isBlank()) return
@@ -126,13 +123,15 @@ class MainViewModel(
                 if (address != null) {
                     val lat = address.latitude
                     val lon = address.longitude
-                    val finalCityName = address.locality ?: address.adminArea ?: cityName
 
-                    // Eski kararlı koordinat yapısına güvenle geri dönüldü:
+                    val cleanCityName = cityName.trim().lowercase(Locale("tr")).replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase(Locale("tr")) else it.toString()
+                    }
+
                     prayerRepository.fetchAndSaveRemotePrayerTimes(lat, lon).onSuccess {
                         viewModelScope.launch(Dispatchers.Main) {
-                            _currentConfig.value = SavedLocation(finalCityName, lat, lon, false)
-                            _locationName.value = finalCityName
+                            _currentConfig.value = SavedLocation(cleanCityName, lat, lon, false)
+                            _locationName.value = cleanCityName
                             updateLiveTime()
                             setSettingsDialogVisible(false)
                         }
@@ -163,7 +162,6 @@ class MainViewModel(
                         ?: address?.adminArea
                         ?: "Bilinmeyen Konum"
 
-                    // Eski kararlı koordinat yapısına güvenle geri dönüldü:
                     prayerRepository.fetchAndSaveRemotePrayerTimes(lat, lon).onSuccess {
                         viewModelScope.launch(Dispatchers.Main) {
                             _currentConfig.value = SavedLocation(realCityName, lat, lon, true)
@@ -179,13 +177,7 @@ class MainViewModel(
             }
         }
     }
-    /**
-     * VERİTABANI BAĞLANTISI: Room'dan verileri çeker veya eksikse internetten koordinatla ister.
-     */
-    /**
-     * DİYANET TEMKİN MOTORU (YARDIMCI FONKSİYON)
-     * Bir saate (Örn: "04:12") ilgili vaktin Diyanet temkin dakikasını uygular ve yeni saati String döner.
-     */
+
     private fun applyTemkinToTimeString(vakitName: String, timeStr: String): String {
         val diyanetTemkinPayi = mapOf(
             "imsak" to +39, "sunrise" to +1, "dhuhr" to 0, "asr" to 0, "maghrib" to 0, "isha" to -41
@@ -202,14 +194,12 @@ class MainViewModel(
         } catch (e: Exception) {
             timeStr
         }
-    }
-
-    /**
-     * VERİTABANI BAĞLANTISI: Room'dan verileri çeker.
-     * 🎯 ARTIK SAĞ PANELDEKİ YAZILAR DA BURADA TEMKİN MOTORUNDAN GEÇİRİLİP FİLTRELENİYOR!
+    }    /**
+     * VERİTABANI BAĞLANTISI: Room'dan verileri çeker veya eksikse internetten ister.
      */
     fun loadPrayerDataWithLocation(latitude: Double? = null, longitude: Double? = null) {
-        if (latitude != null && longitude != null) {
+        // 🌟 KESİN ÇÖZÜM KİLİDİ: Koordinattan isim çözme işlemini SADECE GPS açıkken tetikliyoruz.
+        if (latitude != null && longitude != null && _currentConfig.value.isAutomatic) {
             fetchCityNameFromCoordinates(latitude, longitude)
         }
 
@@ -218,7 +208,6 @@ class MainViewModel(
 
             getPrayerTimeUseCase(todayStr).collect { prayerTime ->
                 if (prayerTime != null) {
-                    // 🎯 TEMKİN ENJEKSİYONU: Sağ panelde listelenecek saatleri Diyanet paylarıyla düzeltiyoruz
                     val correctedPrayerTime = PrayerTime(
                         date = prayerTime.date,
                         imsak = applyTemkinToTimeString("imsak", prayerTime.imsak),
@@ -247,18 +236,11 @@ class MainViewModel(
         }
     }
 
-    /**
-     * DİYANET TEMKİN MOTORU DESTEKLİ GERİ SAYIM SİSTEMİ
-     * Not: _prayerTimes artık yukarıda filtrelendiği için, bu fonksiyonun içindeki
-     * listeyi doğrudan filtrelenmiş saatler üzerinden okutarak çelişkileri önlüyoruz.
-     */
     private fun calculateRemainingTime(prayer: PrayerTime) {
         val now = Calendar.getInstance()
         val currentMs = now.timeInMillis
         val todayStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(Date())
 
-        // Saatler loadPrayerDataWithLocation içinde zaten düzeltildiği için ham temkin eklemelerini buradan kaldırıp
-        // doğrudan arayüzdeki (filtrelenmiş) saatlerle senkron çalıştırıyoruz.
         val prayerList = listOf(
             Pair("imsak", prayer.imsak),
             Pair("sunrise", prayer.gunes),
@@ -327,21 +309,14 @@ class MainViewModel(
         }
     }
 
-
     private fun updateLiveTime() {
-        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
         val now = Date()
 
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFormat = SimpleDateFormat("dd MMMM yyyy, EEEE", Locale("tr"))
         _currentTime.value = timeFormat.format(now)
         _currentDate.value = dateFormat.format(now)
 
-        val minimalTimeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val minimalDateFormat = SimpleDateFormat("dd EEEE", Locale("tr"))
-        _minimalTime.value = minimalTimeFormat.format(now)
-        _minimalDate.value = minimalDateFormat.format(now)
-
-        // Gece 22:00 ile sabah 05:59 arası otomatik karartma
         val calendar = Calendar.getInstance()
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
         val shouldDim = currentHour !in 6..21
@@ -351,14 +326,10 @@ class MainViewModel(
 
         _prayerTimes.value?.let { calculateRemainingTime(it) }
     }
-    /**
-     * DİYANET TEMKİN MOTORU DESTEKLİ GERİ SAYIM SİSTEMİ
-     * API'den gelen ham vakitleri fıkhi temkin paylarıyla düzelterek işler.
-     */
-
-
 
     private fun fetchCityNameFromCoordinates(latitude: Double, longitude: Double) {
+        if (!_currentConfig.value.isAutomatic) return
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val context = getApplication<Application>().applicationContext

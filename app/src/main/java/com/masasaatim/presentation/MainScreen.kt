@@ -1,6 +1,8 @@
 package com.masasaatim.presentation
 
 import android.app.Application
+import android.content.Context
+import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -29,218 +31,194 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.Alignment
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import java.text.SimpleDateFormat
 
-
-
-/**
- * MainScreen: Masa saatinizin yatay modda (Landscape) çalışan ana arayüz bileşenidir.
- * Klasik ve Minimalist tasarım şablonları arasında geçiş köprüsü kurar.
- */
 @Composable
 fun MainScreen() {
 
-    // --- SİSTEM BAR ÇUBUKLARINI İKİ EKRANDA DA TAMAMEN GİZLEME MOTORU ---
     val localContext = LocalContext.current
     val window = (localContext as? Activity)?.window
     if (window != null) {
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        // Üst bildirim (Status bar) ve alt navigasyon çubuklarını tamamen gizler (Tam Ekran Modu)
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-        // Kullanıcı ekranı kenardan kaydırsa bile barların geçici görünmesini ve geri kapanmasını sağlar (Immersive Mode)
         windowInsetsController.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
-    // ViewModel fabrikası (Factory) aracılığıyla MainViewModel nesnesi bağımlılıkları ile başlatılıyor
-    val context = LocalContext.current.applicationContext as Application
-    val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.provideFactory(context))
+    val mainViewModel: MainViewModel = viewModel()
 
-    // ViewModel içindeki StateFlow yapıları, Compose arayüzünün anlayacağı reaktif durumlara (State) dönüştürülüyor
-    val showSettingsDialog by mainViewModel.showSettingsDialog.collectAsState() // Ayarlar paneli görünür mü?
-    val currentDate by mainViewModel.currentDate.collectAsState() // Canlı tarih verisi (Örn: "9 Haziran Salı")
-    val remainingTime by mainViewModel.remainingTime.collectAsState() // Bir sonraki vakte kalan süre sayacı
-    val isDimmedMode by mainViewModel.isDimmedMode.collectAsState() // Gece/Kısık ekran modu aktif mi?
-    val isAzanPlaying by mainViewModel.isAzanPlaying.collectAsState() // Şu an ezan okunuyor mu?
-    val locationName by mainViewModel.locationName.collectAsState() // Seçili konum adı (Örn: "Ankara")
+    val showSettingsDialog by mainViewModel.showSettingsDialog.collectAsState()
+    val remainingTime by mainViewModel.remainingTime.collectAsState()
+    val isDimmedMode by mainViewModel.isDimmedMode.collectAsState()
+    val isAzanPlaying by mainViewModel.isAzanPlaying.collectAsState()
+    val locationName by mainViewModel.locationName.collectAsState()
+    val currentTime by mainViewModel.currentTime.collectAsState()
+    val currentDate by mainViewModel.currentDate.collectAsState()
+    val nextVakitName by mainViewModel.nextVakitName.collectAsState()
 
-    // ViewModel üzerindeki canlı veriler arayüzün tetiklenmesi için State (Eyalet) olarak toplanıyor
-    val minimalTime by mainViewModel.minimalTime.collectAsState() // Saniyesiz saat bilgisi (Örn: "14:45")
-    val nextVakitName by mainViewModel.nextVakitName.collectAsState() // Sıradaki namaz vaktinin Türkçe adı (Örn: "Akşam"
-
-    // --- AKILLI GECE/GÜNDÜZ RENK MOTORU ---
-    // Eğer 'isDimmedMode' true ise (Gece saatlerinde) piksellerin ışığı gözü almaması için loş/gri tonlara çekilir.
-    val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF) // Saat rengi: Koyu gri veya Saf Beyaz
-    val detailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39) // Vurgu rengi: Koyu yeşil veya Canlı fıstık yeşili
+    val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF)
+    val detailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
     val labelColor = if (isDimmedMode) Color(0xFF222222) else Color.Gray
-
-    // Kontrol butonlarının (Oynat/Durdur) gece moduna uyumlu dinamik renk tanımlamaları
     val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
     val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
 
-    // Eğer ayarlar paneli durumu true ise ekranda Dialog (Açılır pencere) gösterilir
     if (showSettingsDialog) {
         SettingsDialog(
             viewModel = mainViewModel,
             onDismiss = { mainViewModel.setSettingsDialogVisible(false) }
         )
     }
-
-        // Ana ekran taşıyıcı kutusu (Arka plan her zaman saf siyah tutularak şarj tasarrufu sağlanır)
-        Box(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF000000))
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF000000))
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Klasik tasarımın yatay (Row) yerleşimi başlıyor
-            Row(
+
+            // SOL PANEL (%80 Genişlik): Devasa Dijital Saat
+            Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .weight(0.8f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = currentTime,
+                    fontSize = 200.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = clockColor,
+                    letterSpacing = (-2).sp,
+                    lineHeight = 170.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(Alignment.CenterVertically)
+                )
+            }
+
+            // SAĞ PANEL (%20 Genişlik): Hatasız Dikey 3'lü Bölüm Nizamı
+            Column(
+                modifier = Modifier
+                    .weight(0.2f)
+                    .fillMaxHeight()
+                    .padding(vertical = 12.dp)
+                    .padding(start = 8.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.End
             ) {
 
-
-                // =======================================================
-                // SOL PANEL (%80 Genişlik): Devasa Dijital Saat & Konum İsmi
-                // =======================================================
+                // 1. BÖLÜM (ÜST): Sağa Yaslı Detaylı Tarih (İstediğiniz Yeni Formatta)
                 Column(
-                    modifier = Modifier
-                        .weight(0.8f) // Ekran genişliğinin %80'ini bu panele ayırır
-                        .fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally // Elemanları yatayda ortalar
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // Saniyesiz, devasa boyutlu dijital saat metni (180sp)
-                    // SOL PANEL İÇERİSİNDEKİ SAAT BİLEŞENİ
-                    Text(
-                        text = minimalTime,
-                        fontSize = 200.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = clockColor, // Gece durumuna göre loşlaşan dinamik renk
-                        letterSpacing = (-2).sp, // Sayıların birbirine daha estetik yakın durması için harf arası daraltma
-                        lineHeight = 200.sp, // 190sp fontun dikeyde fazladan görünmez boşluk yaratmasını engeller, kutuyu tam sınırlar
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth() // Sol panelin yatayda ortalanması için genişliği kaplasın
+                    // currentDate formatı "dd MMMM yyyy, EEEE" (Örn: "06 Temmuz 2026, Pazartesi") şeklindedir.
+                    // İstediğiniz "06.07.2026" formatını sistem takviminden dinamik ve hatasız üretiyoruz:
+                    val numericDateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+                    val formattedNumericDate = numericDateFormat.format(java.util.Date())
 
-                            .wrapContentHeight(Alignment.CenterVertically) // Saati sol panelin tam dikey ortasına yerleştirir
+                    // Virgülden sonrasını ayırarak sadece gün adını temiz bir şekilde yakalıyoruz
+                    val dateParts = currentDate.split(",")
+                    val rawDayName = dateParts.getOrNull(1)?.trim() ?: "" // Örn: "Pazartesi"
+
+                    // Sadece ilk harfi büyük, kalanları küçük olacak şekilde gün adını formatlıyoruz
+                    val formattedDayName = rawDayName.lowercase(Locale("tr")).replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase(Locale("tr")) else it.toString()
+                    }
+
+                    // Üst Satır: Tam Sayısal Tarih (Örn: 06.07.2026)
+                    Text(
+                        text = formattedNumericDate,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = clockColor,
+                        textAlign = TextAlign.End
+                    )
+                    // Alt Satır: Şık Gün İsmi (Örn: Pazartesi)
+                    Text(
+                        text = formattedDayName,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = detailColor, // Tasarıma uyumlu yeşil vurgu rengi
+                        textAlign = TextAlign.End
                     )
                 }
 
-                // =======================================================
-                // SAĞ PANEL (%20 Genişlik): Dinamik Tarih ve Kalan Süre Sayaçları
-                // =======================================================
-                Column(
-                    modifier = Modifier
-                        .weight(0.2f) // Ekran genişliğinin kalan %20'lik dilimini kullanır
-                        .fillMaxHeight()
-                        .padding(start = 8.dp),
-                    verticalArrangement = Arrangement.SpaceBetween, // Üstteki tarih grubu ile alttaki sayaç grubunu iki zıt uca iter
-                    horizontalAlignment = Alignment.End // Tüm metinleri sağa yaslar
-                ) {
 
-                    // SAĞ ÜST GRUP: Ayrıştırılmış Tarih ve Gün İsmi
+                // 2. BÖLÜM (ORTA): Konum İkonu ve Tek Şehir İsmi
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.clickable { mainViewModel.setSettingsDialogVisible(true) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = "Ayarlar",
+                        tint = detailColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = locationName.uppercase(Locale("tr")),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = clockColor,
+                        letterSpacing = 0.5.sp,
+                        textAlign = TextAlign.End
+                    )
+                }
+
+                // 3. BÖLÜM (ALT): İkonlar, Vakit Adı ve Sayaç
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = { mainViewModel.simulateAzanTrigger() },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = "Test Oynat",
+                                tint = if (isAzanPlaying) iconPassiveColor else iconActiveColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { mainViewModel.stopAzanPlayback() },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Sustur",
+                                tint = if (isAzanPlaying) Color.Red else iconPassiveColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
                     Column(
                         horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(top = 12.dp)
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
                     ) {
-                        val dateParts = currentDate.split(",")
-                        val rawDate = dateParts.firstOrNull() ?: ""
-                        val dayName = dateParts.getOrNull(1)?.trim() ?: ""
-
+                        // 🌟 Işık Değeri Yükseltilmiş Yeni Satır:
                         Text(
-                            text = rawDate,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            text = "$nextVakitName Vaktine",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
                             color = clockColor,
                             textAlign = TextAlign.End
                         )
 
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = dayName,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = detailColor,
-                            textAlign = TextAlign.End
-                        )
-                    }
-
-                    // SAĞ ORTA GRUP: Konum icon ve adi (Artık Ayarlar Butonu Görevinde)
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier
-                            .padding(bottom = 12.dp)
-                            .clickable {
-                                mainViewModel.setSettingsDialogVisible(true)
-                            }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Merkezi Ayarlar Menüsünü Aç",
-                            tint = detailColor,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Text(
-                            text = locationName.uppercase(Locale.getDefault()),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isDimmedMode) Color(0xFF333333) else Color.LightGray,
-                            letterSpacing = 1.sp
-                        )
-                    }
-
-                    // SAĞ ALT GRUP: Sıradaki Vakit, KONTROL PANELİ ve Geri Sayım Sayacı
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp), // Butonlar arasında minimal boşluk
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 1. Oynat Butonu (Ezan Testi) - İkon Boyutu Büyütüldü
-                            IconButton(
-                                onClick = { mainViewModel.simulateAzanTrigger() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Test Oynat",
-                                    tint = if (isAzanPlaying) iconPassiveColor else iconActiveColor,
-                                    modifier = Modifier.size(24.dp) // Orijinal büyük boyuta getirildi
-                                )
-                            }
-
-                            // 2. Durdur Butonu (Susturma) - İkon Boyutu Büyütüldü
-                            IconButton(
-                                onClick = { mainViewModel.stopAzanPlayback() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Sustur",
-                                    tint = if (isAzanPlaying) Color.Red else iconPassiveColor,
-                                    modifier = Modifier.size(20.dp) // Orijinal büyük boyuta getirildi
-                                )
-                            }
-                        }
-
-                        // Hangi vakte kalındığını gösteren bilgilendirme metni (Örn: "Akşam Vaktine")
-                        Text(
-                            text = "$nextVakitName Vaktine",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = labelColor,
-                            textAlign = TextAlign.End
-                        )
-                        // Geri sayım sayacı (Artık en altta)
                         Text(
                             text = remainingTime,
                             fontSize = 16.sp,
@@ -249,17 +227,14 @@ fun MainScreen() {
                             textAlign = TextAlign.End
                         )
                     }
-
                 }
-            } // Row Sonu
-        } // Ana Box sonu
-    } // Klasik Tasarım (Else) bloğunun sonu
-// MainScreen fonksiyonunun sonu
-
-/**
- * SettingsDialog: Arayüz şablonu değiştirme, otomatik GPS ve manuel şehir girişini
- * net iki seçenek halinde sunan modern, kararlı kontrol merkezidir.
- */
+            }
+        }
+    }
+}
+// ============================================================================
+// 🌟 MINIMALIST AYARLAR PENCERESİ (SettingsDialog)
+// ============================================================================
 @Composable
 fun SettingsDialog(
     viewModel: MainViewModel,
@@ -270,7 +245,7 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1F1D1D), // Daha derin, minimalist bir koyu gri
+        containerColor = Color(0xFF121212),
         title = {
             Text(
                 text = "Uygulama Ayarları",
@@ -285,9 +260,6 @@ fun SettingsDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // =======================================================
-                // BÖLÜM 1: KONUM YÖNTEMİ SEÇİMİ (RADYO BUTONLAR)
-                // =======================================================
                 Text(
                     text = "Konum Algılama Yöntemi",
                     fontSize = 12.sp,
@@ -300,7 +272,6 @@ fun SettingsDialog(
                     modifier = Modifier.selectableGroup().fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // SEÇENEK A: OTOMATİK GPS MODU
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -319,7 +290,6 @@ fun SettingsDialog(
                         }
                     }
 
-                    // SEÇENEK B: MANUEL ŞEHİR GİRİŞ MODU
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -341,9 +311,6 @@ fun SettingsDialog(
 
                 HorizontalDivider(thickness = 0.5.dp, color = Color(0xFF2A2A2A))
 
-                // =======================================================
-                // BÖLÜM 2: DİNAMİK METİN GİRİŞ ALANI / BİLGİLENDİRME
-                // =======================================================
                 if (!config.isAutomatic) {
                     OutlinedTextField(
                         value = inputCity.value,
@@ -377,30 +344,25 @@ fun SettingsDialog(
                 }
             }
         },
-        // =======================================================
-        // BÖLÜM 3: MERKEZİ AKSİYON PANELİ (SADECE 2 BUTON)
-        // =======================================================
         confirmButton = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End, // Butonları sağa yaslar
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // İptal Butonu
                 TextButton(onClick = onDismiss) {
                     Text("İptal", color = Color.Gray, fontSize = 14.sp)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Kaydet Butonu
                 Button(
                     onClick = {
                         if (config.isAutomatic) {
                             onDismiss()
                         } else {
                             viewModel.updateLocationManually(inputCity.value)
-                            onDismiss() // Değişikliği yaptıktan sonra pencereyi kapatır
+                            onDismiss()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
@@ -413,3 +375,4 @@ fun SettingsDialog(
         dismissButton = null
     )
 }
+
