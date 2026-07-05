@@ -125,7 +125,6 @@ fun MainScreen() {
                     Spacer(modifier = Modifier.height(2.dp))
                 }
 
-
                 // =======================================================
                 // SAĞ PANEL (%20 Genişlik): Dinamik Tarih ve Kalan Süre Sayaçları
                 // =======================================================
@@ -137,17 +136,16 @@ fun MainScreen() {
                     verticalArrangement = Arrangement.SpaceBetween, // Üstteki tarih grubu ile alttaki sayaç grubunu iki zıt uca iter
                     horizontalAlignment = Alignment.End // Tüm metinleri sağa yaslar
                 ) {
+
                     // SAĞ ÜST GRUP: Ayrıştırılmış Tarih ve Gün İsmi
                     Column(
                         horizontalAlignment = Alignment.End,
                         modifier = Modifier.padding(top = 12.dp)
                     ) {
-                        // ViewModel'den gelen "09 Haziran 2026, Salı" metnini virgülden (,) ikiye böler
                         val dateParts = currentDate.split(",")
-                        val rawDate = dateParts.firstOrNull() ?: "" // Virgülden öncesi: "09 Haziran 2026"
-                        val dayName = dateParts.getOrNull(1)?.trim() ?: "" // Virgülden sonrası (Boşluklar temizlenmiş): "Salı"
+                        val rawDate = dateParts.firstOrNull() ?: ""
+                        val dayName = dateParts.getOrNull(1)?.trim() ?: ""
 
-                        // Sadece Ay ve Günün Sayısal Değeri (Örn: 09 Haziran 2026)
                         Text(
                             text = rawDate,
                             fontSize = 17.sp,
@@ -158,7 +156,6 @@ fun MainScreen() {
 
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        // Altındaki renkli gün ismi metni (Örn: Salı)
                         Text(
                             text = dayName,
                             fontSize = 15.sp,
@@ -180,13 +177,12 @@ fun MainScreen() {
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Merkezi Ayarlar Menüsünü Aç", // Buton görevi gördüğü için açıklamasını güncelledik
+                            contentDescription = "Merkezi Ayarlar Menüsünü Aç",
                             tint = detailColor,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        // Büyük harflere çevrilmiş şehir adı (Örn: ANKARA)
                         Text(
                             text = locationName.uppercase(Locale.getDefault()),
                             fontSize = 14.sp,
@@ -196,13 +192,44 @@ fun MainScreen() {
                         )
                     }
 
-
-                    // SAĞ ALT GRUP: Sıradaki Vakit ve Geri Sayım Sayacı
+                    // SAĞ ALT GRUP: Sıradaki Vakit, KONTROL PANELİ ve Geri Sayım Sayacı
                     Column(
                         horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(bottom = 12.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp), // Butonlar arasında minimal boşluk
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 1. Oynat Butonu (Ezan Testi) - İkon Boyutu Büyütüldü
+                            IconButton(
+                                onClick = { mainViewModel.simulateAzanTrigger() },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Test Oynat",
+                                    tint = if (isAzanPlaying) iconPassiveColor else iconActiveColor,
+                                    modifier = Modifier.size(24.dp) // Orijinal büyük boyuta getirildi
+                                )
+                            }
+
+                            // 2. Durdur Butonu (Susturma) - İkon Boyutu Büyütüldü
+                            IconButton(
+                                onClick = { mainViewModel.stopAzanPlayback() },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = "Sustur",
+                                    tint = if (isAzanPlaying) Color.Red else iconPassiveColor,
+                                    modifier = Modifier.size(20.dp) // Orijinal büyük boyuta getirildi
+                                )
+                            }
+                        }
+
                         // Hangi vakte kalındığını gösteren bilgilendirme metni (Örn: "Akşam Vaktine")
                         Text(
                             text = "$nextVakitName Vaktine",
@@ -211,56 +238,18 @@ fun MainScreen() {
                             color = labelColor,
                             textAlign = TextAlign.End
                         )
-                        // Geri sayım sayacı (Örn: 01:24:05). Dikkat çekmesi için kalın (Bold) ve 20sp yapılmıştır.
+                        // Geri sayım sayacı (Artık en altta)
                         Text(
                             text = remainingTime,
-                            fontSize = 15.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = clockColor,
                             textAlign = TextAlign.End
                         )
                     }
+
                 }
             } // Row Sonu
-
-
-            // ==========================================
-            // KONTROL PANELİ: Köşeye Sabitlendi (Sol Alt)
-            // ==========================================
-            // Ezan testi, susturma yan yana dikey ekranın sol altına yerleştirir.
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart) // Box içerisindeki sol alt köşeye hizalama yapar
-                    .padding(bottom = 16.dp, start = 16.dp)
-                    .background(Color.Transparent), // Arka plan şeffaf tutuluyor
-                horizontalArrangement = Arrangement.spacedBy(8.dp) // Butonlar arasında 8dp boşluk bırakır
-            ) {
-                // 1. Oynat Butonu (Ezan Testi)
-                // Kullanıcının ezan sesinin çalışıp çalışmadığını manuel olarak test etmesini sağlar.
-                IconButton(onClick = { mainViewModel.simulateAzanTrigger() }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Test Oynat",
-                        // Eğer şu an ezan zaten okunuyorsa pasif renge bürünür, okunmuyorsa aktif/canlı renkte kalır.
-                        tint = if (isAzanPlaying) iconPassiveColor else iconActiveColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                // 2. Durdur Butonu (Susturma)
-                // Okunmakta olan ezanı anında kesmek/susturmak için kullanılır.
-                IconButton(onClick = { mainViewModel.stopAzanPlayback() }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Sustur",
-                        // Ezan okunduğu esnada dikkat çekmesi için Kırmızı (Red) renge bürünür.
-                        tint = if (isAzanPlaying) Color.Red else iconPassiveColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-
-            }
-
         } // Ana Box sonu
     } // Klasik Tasarım (Else) bloğunun sonu
 // MainScreen fonksiyonunun sonu
