@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -169,17 +168,21 @@ fun MainScreen() {
                         )
                     }
 
-                    // SAĞ ORTA GRUP: Konum icon ve adi
+                    // SAĞ ORTA GRUP: Konum icon ve adi (Artık Ayarlar Butonu Görevinde)
                     Column(
                         horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier
+                            .padding(bottom = 12.dp)
+                            .clickable {
+                                mainViewModel.setSettingsDialogVisible(true)
+                            }
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Konum",
+                            contentDescription = "Merkezi Ayarlar Menüsünü Aç", // Buton görevi gördüğü için açıklamasını güncelledik
                             tint = detailColor,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.height(2.dp))
 
@@ -192,6 +195,7 @@ fun MainScreen() {
                             letterSpacing = 1.sp
                         )
                     }
+
 
                     // SAĞ ALT GRUP: Sıradaki Vakit ve Geri Sayım Sayacı
                     Column(
@@ -223,7 +227,7 @@ fun MainScreen() {
             // ==========================================
             // KONTROL PANELİ: Köşeye Sabitlendi (Sol Alt)
             // ==========================================
-            // Ezan testi, susturma ve ayarlar butonlarını yan yana dikey ekranın sol altına yerleştirir.
+            // Ezan testi, susturma yan yana dikey ekranın sol altına yerleştirir.
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart) // Box içerisindeki sol alt köşeye hizalama yapar
@@ -255,16 +259,6 @@ fun MainScreen() {
                     )
                 }
 
-                // 3. MERKEZİ AYARLAR DÜĞMESİ:
-                // Tıklandığında ViewModel'deki ayarlar diyaloğu görünürlük bayrağını true yapar.
-                IconButton(onClick = { mainViewModel.setSettingsDialogVisible(true) }, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Merkezi Ayarlar Menüsünü Aç",
-                        tint = iconPassiveColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
             }
 
         } // Ana Box sonu
