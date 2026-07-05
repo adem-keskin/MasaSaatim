@@ -22,7 +22,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import java.util.Calendar
 import java.util.Locale
 import androidx.core.view.WindowCompat
 import android.app.Activity
@@ -31,6 +30,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.Alignment
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+
 
 /**
  * MainScreen: Masa saatinizin yatay modda (Landscape) çalışan ana arayüz bileşenidir.
@@ -66,6 +66,23 @@ fun MainScreen() {
     val isAzanPlaying by mainViewModel.isAzanPlaying.collectAsState() // Şu an ezan okunuyor mu?
     val locationName by mainViewModel.locationName.collectAsState() // Seçili konum adı (Örn: "Ankara")
 
+    // ViewModel üzerindeki canlı veriler arayüzün tetiklenmesi için State (Eyalet) olarak toplanıyor
+    val minimalTime by mainViewModel.minimalTime.collectAsState() // Saniyesiz saat bilgisi (Örn: "14:45")
+    val nextVakitName by mainViewModel.nextVakitName.collectAsState() // Sıradaki namaz vaktinin Türkçe adı (Örn: "Akşam")
+
+
+
+
+
+    // --- AKILLI GECE/GÜNDÜZ RENK MOTORU ---
+    // Eğer 'isDimmedMode' true ise (Gece saatlerinde) piksellerin ışığı gözü almaması için loş/gri tonlara çekilir.
+    val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF) // Saat rengi: Koyu gri veya Saf Beyaz
+    val detailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39) // Vurgu rengi: Koyu yeşil veya Canlı fıstık yeşili
+    val labelColor = if (isDimmedMode) Color(0xFF222222) else Color.Gray
+
+    // Kontrol butonlarının (Oynat/Durdur) gece moduna uyumlu dinamik renk tanımlamaları
+    val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
+    val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
     // Eğer ayarlar paneli durumu true ise ekranda Dialog (Açılır pencere) gösterilir
     if (showSettingsDialog) {
         SettingsDialog(
@@ -73,32 +90,6 @@ fun MainScreen() {
             onDismiss = { mainViewModel.setSettingsDialogVisible(false) }
         )
     }
-
-    // --- GEÇİŞ KÖPRÜSÜ: Eğer Kullanıcı Alternatif / Minimalist Tasarımı Seçtiyse ---
-    if (isAlternativeUi) {
-        MinimalScreen(mainViewModel = mainViewModel) // Diğer ekran bileşeni çağrılır
-    } else {
-        // --- KLASİK TASARIM MOTORU ---
-
-        // Ekranın gece/kısık modda (isDimmedMode) olup olmamasına göre dinamik renk paleti ayarlanıyor:
-        val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF) // Kısık modda gri, normalde beyaz saat
-        val primaryDetailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39) // Vurgu rengi (Yeşil / Sarı-Yeşil)
-        val listLabelColor = if (isDimmedMode) Color(0xFF333333) else Color(0xB3FFFFFF)
-        val dividerColor = if (isDimmedMode) Color(0xFF0A0A0A) else Color(0xFF1E1E1E)
-
-        val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
-        val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
-
-        // --- AMOLED EKRAN KORUMA ALGORİTMASI (BURN-IN PROTECTION) ---
-        // Saat sürekli aynı piksellerde kalırsa ekranda kalıcı iz bırakır (Ekran yanması).
-        // Bu algoritma, her dakika değişiminde (currentMinute % 4 ve % 3) sol paneli birkaç piksel (dp) kaydırır.
-        val currentMinute = Calendar.getInstance().get(Calendar.MINUTE)
-        val offsetX = when (currentMinute % 4) {
-            0 -> 6.dp; 1 -> (-6).dp; 2 -> 4.dp; else -> (-4).dp
-        }
-        val offsetY = when (currentMinute % 3) {
-            0 -> 4.dp; 1 -> (-4).dp; else -> 2.dp
-        }
 
         // Ana ekran taşıyıcı kutusu (Arka plan her zaman saf siyah tutularak şarj tasarrufu sağlanır)
         Box(
@@ -113,137 +104,120 @@ fun MainScreen() {
                     .padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // SOL PANEL: Canlı Saat, Konum, Tarih ve Kalan Süre Sayacı
-                // 'offset' parametresi yukarıda hesaplanan piksel kaydırma (Burn-in) değerlerini uyguluyor.
+                // =======================================================
+                // SOL PANEL (%80 Genişlik): Devasa Dijital Saat & Konum İsmi
+                // =======================================================
                 Column(
                     modifier = Modifier
-                        .weight(1.2f)
-                        .fillMaxHeight()
-                        .offset(x = offsetX, y = offsetY),
+                        .weight(0.8f) // Ekran genişliğinin %80'ini bu panele ayırır
+                        .fillMaxHeight(),
                     verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally // Elemanları yatayda ortalar
                 ) {
-                    // Konum Paneli: İkon ve Konum İsmi
+                    // Saniyesiz, devasa boyutlu dijital saat metni (180sp)
+                    Text(
+                        text = minimalTime,
+                        fontSize = 190.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = clockColor, // Gece durumuna göre loşlaşan dinamik renk
+                        letterSpacing = (-2).sp, // Sayıların birbirine daha estetik yakın durması için harf arası daraltma
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Saatin hemen altındaki yerleşim yeri (Konum) paneli
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Konum İkonu",
-                            tint = primaryDetailColor,
-                            modifier = Modifier.size(18.dp)
+                            contentDescription = "Konum",
+                            tint = detailColor,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
+                        // Büyük harflere çevrilmiş şehir adı (Örn: ANKARA)
                         Text(
                             text = locationName.uppercase(Locale.getDefault()),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isDimmedMode) Color(0xFF333333) else Color.Gray,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDimmedMode) Color(0xFF333333) else Color.LightGray,
                             letterSpacing = 1.sp
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    // Dijital Saat Metni (Büyük Punto)
-                    Text(
-                        text = currentTime,
-                        fontSize = 100.sp,
-                        fontWeight = FontWeight.Light,
-                        color = clockColor,
-                        letterSpacing = 2.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Canlı Tarih Metni
-                    Text(
-                        text = currentDate,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = primaryDetailColor,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Bir sonraki vakte kalan süreyi gösteren geri sayım metni
-                    Text(
-                        text = remainingTime,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = if (isDimmedMode) Color(0xFF222222) else Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
                 }
 
-                // SAĞ PANEL: 6 Temel Namaz Vakti Listesi
+
+                // =======================================================
+                // SAĞ PANEL (%20 Genişlik): Dinamik Tarih ve Kalan Süre Sayaçları
+                // =======================================================
                 Column(
                     modifier = Modifier
-                        .weight(0.8f) // Sağ panelin ekran genişliğindeki payı (%40 civarı)
-                        .fillMaxHeight() // Ekranın tüm yüksekliğini kaplar
-                        .padding(start = 16.dp, end = 22.dp) // Kenar boşlukları ayarlanıyor
-
-                        // --- TERS PİKSEL KAYDIRMA ALGORİTMASI ---
-                        // Sol panel +X yönüne kayarken sağ panel -X yönüne kayarak ekran genelindeki
-                        // statik piksellerin (yerleşik çizgiler ve yazılar) yerini sürekli değiştirir.
-                        // Bu sayede AMOLED ekran koruması tüm arayüz için tamamlanmış olur.
-                        .offset(x = -offsetX, y = -offsetY),
-
-                    verticalArrangement = Arrangement.Center // Vakit satırlarını dikeyde ortalar
+                        .weight(0.2f) // Ekran genişliğinin kalan %20'lik dilimini kullanır
+                        .fillMaxHeight()
+                        .padding(start = 8.dp),
+                    verticalArrangement = Arrangement.SpaceBetween, // Üstteki tarih grubu ile alttaki sayaç grubunu iki zıt uca iter
+                    horizontalAlignment = Alignment.End // Tüm metinleri sağa yaslar
                 ) {
-                    // Veritabanından veya API'den gelen ezan vakitleri boş (null) değilse listeleme başlar
-                    prayerTimes?.let { times ->
+                    // SAĞ ÜST GRUP: Ayrıştırılmış Tarih ve Gün İsmi
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
+                        // ViewModel'den gelen "09 Haziran 2026, Salı" metnini virgülden (,) ikiye böler
+                        val dateParts = currentDate.split(",")
+                        val rawDate = dateParts.firstOrNull() ?: "" // Virgülden öncesi: "09 Haziran 2026"
+                        val dayName = dateParts.getOrNull(1)?.trim() ?: "" // Virgülden sonrası (Boşluklar temizlenmiş): "Salı"
 
-                        // Her bir ezan vakti için özelleştirilmiş 'PrayerTimeRow' bileşeni çağrılıyor.
-                        // Bu fonksiyon muhtemelen alt satırlarda tanımlı olan, solunda vakit adı (örn: İmsak),
-                        // sağında ise saat (örn: 03:45) yazan ve altında bir çizgi (divider) barındıran özel bir tasarımdır.
-
-                        PrayerTimeRow(
-                            "İmsak",
-                            times.imsak,
-                            listLabelColor,  // Vakit adının rengi (Gece moduna göre dinamik)
-                            clockColor,      // Saat değerinin rengi (Gece moduna göre dinamik)
-                            dividerColor     // Altlarındaki ayırıcı çizginin rengi
+                        // Sadece Ay ve Günün Sayısal Değeri (Örn: 09 Haziran 2026)
+                        Text(
+                            text = rawDate,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = clockColor,
+                            textAlign = TextAlign.End
                         )
 
-                        PrayerTimeRow(
-                            "Güneş",
-                            times.gunes,
-                            listLabelColor,
-                            clockColor,
-                            dividerColor
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Altındaki renkli gün ismi metni (Örn: Salı)
+                        Text(
+                            text = dayName,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = detailColor,
+                            textAlign = TextAlign.End
                         )
+                    }
 
-                        PrayerTimeRow("Öğle", times.ogle, listLabelColor, clockColor, dividerColor)
-
-                        PrayerTimeRow(
-                            "İkindi",
-                            times.ikindi,
-                            listLabelColor,
-                            clockColor,
-                            dividerColor
+                    // SAĞ ALT GRUP: Sıradaki Vakit ve Geri Sayım Sayacı
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        // Hangi vakte kalındığını gösteren bilgilendirme metni (Örn: "Akşam Vaktine")
+                        Text(
+                            text = "$nextVakitName Vaktine",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = labelColor,
+                            textAlign = TextAlign.End
                         )
-
-                        PrayerTimeRow(
-                            "Akşam",
-                            times.aksam,
-                            listLabelColor,
-                            clockColor,
-                            dividerColor
-                        )
-
-                        PrayerTimeRow(
-                            "Yatsı",
-                            times.yatsi,
-                            listLabelColor,
-                            clockColor,
-                            dividerColor
+                        // Geri sayım sayacı (Örn: 01:24:05). Dikkat çekmesi için kalın (Bold) ve 20sp yapılmıştır.
+                        Text(
+                            text = remainingTime,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = clockColor,
+                            textAlign = TextAlign.End
                         )
                     }
                 }
-            } // Row sonu
+            } // Row Sonu
+
 
             // ==========================================
             // KONTROL PANELİ: Köşeye Sabitlendi (Sol Alt)
@@ -294,7 +268,7 @@ fun MainScreen() {
 
         } // Ana Box sonu
     } // Klasik Tasarım (Else) bloğunun sonu
-} // MainScreen fonksiyonunun sonu
+// MainScreen fonksiyonunun sonu
 
 /**
  * SettingsDialog: Arayüz şablonu değiştirme, otomatik GPS ve manuel şehir girişini
