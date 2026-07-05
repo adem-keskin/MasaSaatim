@@ -56,11 +56,8 @@ fun MainScreen() {
     val mainViewModel: MainViewModel = viewModel(factory = MainViewModel.provideFactory(context))
 
     // ViewModel içindeki StateFlow yapıları, Compose arayüzünün anlayacağı reaktif durumlara (State) dönüştürülüyor
-    val isAlternativeUi by mainViewModel.isAlternativeUi.collectAsState() // Minimalist tasarım açık mı?
     val showSettingsDialog by mainViewModel.showSettingsDialog.collectAsState() // Ayarlar paneli görünür mü?
-    val currentTime by mainViewModel.currentTime.collectAsState() // Canlı saat verisi (Örn: "12:11")
     val currentDate by mainViewModel.currentDate.collectAsState() // Canlı tarih verisi (Örn: "9 Haziran Salı")
-    val prayerTimes by mainViewModel.prayerTimes.collectAsState() // Ezan vakitleri listesi
     val remainingTime by mainViewModel.remainingTime.collectAsState() // Bir sonraki vakte kalan süre sayacı
     val isDimmedMode by mainViewModel.isDimmedMode.collectAsState() // Gece/Kısık ekran modu aktif mi?
     val isAzanPlaying by mainViewModel.isAzanPlaying.collectAsState() // Şu an ezan okunuyor mu?
@@ -104,6 +101,8 @@ fun MainScreen() {
                     .padding(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
+
                 // =======================================================
                 // SOL PANEL (%80 Genişlik): Devasa Dijital Saat & Konum İsmi
                 // =======================================================
@@ -125,28 +124,6 @@ fun MainScreen() {
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
-
-                    // Saatin hemen altındaki yerleşim yeri (Konum) paneli
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "Konum",
-                            tint = detailColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        // Büyük harflere çevrilmiş şehir adı (Örn: ANKARA)
-                        Text(
-                            text = locationName.uppercase(Locale.getDefault()),
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isDimmedMode) Color(0xFF333333) else Color.LightGray,
-                            letterSpacing = 1.sp
-                        )
-                    }
                 }
 
 
@@ -192,6 +169,30 @@ fun MainScreen() {
                         )
                     }
 
+                    // SAĞ ORTA GRUP: Konum icon ve adi
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = "Konum",
+                            tint = detailColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        // Büyük harflere çevrilmiş şehir adı (Örn: ANKARA)
+                        Text(
+                            text = locationName.uppercase(Locale.getDefault()),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDimmedMode) Color(0xFF333333) else Color.LightGray,
+                            letterSpacing = 1.sp
+                        )
+                    }
+
                     // SAĞ ALT GRUP: Sıradaki Vakit ve Geri Sayım Sayacı
                     Column(
                         horizontalAlignment = Alignment.End,
@@ -209,7 +210,7 @@ fun MainScreen() {
                         // Geri sayım sayacı (Örn: 01:24:05). Dikkat çekmesi için kalın (Bold) ve 20sp yapılmıştır.
                         Text(
                             text = remainingTime,
-                            fontSize = 20.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = clockColor,
                             textAlign = TextAlign.End
@@ -442,37 +443,4 @@ fun SettingsDialog(
         // Boş bırakıyoruz çünkü alt kısımdaki tüm buton düzenini yukarıdaki Row ile kendimiz dizayn ettik
         dismissButton = null
     )
-}
-
-
-/**
- * PrayerTimeRow: Sağ taraftaki ezan vakitleri listesinde her bir satırı (Örn: İmsak  03:45)
- * çizen, aralarında ince bir çizgi barındıran modüler arayüz bileşenidir.
- */
-@Composable
-fun PrayerTimeRow(
-    name: String,        // Vaktin adı (Örn: "İmsak", "Öğle")
-    time: String,        // Vaktin saat değeri (Örn: "03:45", "13:12")
-    labelColor: Color,   // Vakit adının yazı rengi (Gece moduna göre dinamik gelir)
-    valueColor: Color,   // Saat değerinin yazı rengi (Gece moduna göre dinamik gelir)
-    divColor: Color      // Satırın altındaki bölücü çizginin rengi
-) {
-    // Vakit bilgilerini ve altındaki çizgiyi dikey olarak hizalamak için Column kullanılır.
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth() // Satırın tüm genişliği kaplamasını sağlar
-                .padding(vertical = 6.dp), // Satırlar arasında dikeyde 6dp boşluk bırakır
-            horizontalArrangement = Arrangement.SpaceBetween, // Vakit adını en sola, saati ise en sağa yaslar
-            verticalAlignment = Alignment.CenterVertically   // Metinleri dikey eksende aynı hizada ortalar
-        ) {
-            // Sol taraftaki vakit ismi (Örn: İmsak)
-            Text(text = name, fontSize = 18.sp, color = labelColor)
-
-            // Sağ taraftaki saat değeri. Dikkat çekmesi için kalın (Bold) ve biraz daha büyük (20sp) yapılmıştır.
-            Text(text = time, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = valueColor)
-        }
-        // Satırın bittiğini gösteren, Material 3 standartlarında ince bir yatay çizgi çeker.
-        HorizontalDivider(color = divColor, thickness = 0.7.dp)
-    }
 }
