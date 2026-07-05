@@ -275,18 +275,18 @@ fun SettingsDialog(
     onDismiss: () -> Unit
 ) {
     val config by viewModel.currentConfig.collectAsState()
-    val isAlternativeUi by viewModel.isAlternativeUi.collectAsState()
     val inputCity = remember { mutableStateOf(config.cityName) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1E1E), // Gece gözü yormayan asil koyu gri arka plan
+        containerColor = Color(0xFF1F1D1D), // Daha derin, minimalist bir koyu gri
         title = {
             Text(
-                text = "Merkezi Uygulama Ayarları",
-                fontWeight = FontWeight.Bold,
+                text = "Uygulama Ayarları",
+                fontWeight = FontWeight.SemiBold,
                 color = Color.White,
-                fontSize = 18.sp
+                fontSize = 18.sp,
+                letterSpacing = 0.5.sp
             )
         },
         text = {
@@ -298,15 +298,16 @@ fun SettingsDialog(
                 // BÖLÜM 1: KONUM YÖNTEMİ SEÇİMİ (RADYO BUTONLAR)
                 // =======================================================
                 Text(
-                    text = "Konum Algılama Yöntemi:",
-                    fontSize = 13.sp,
-                    color = Color(0xFFCDDC39),
-                    fontWeight = FontWeight.Medium
+                    text = "Konum Algılama Yöntemi",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.5.sp
                 )
 
                 Column(
                     modifier = Modifier.selectableGroup().fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // SEÇENEK A: OTOMATİK GPS MODU
                     Row(
@@ -318,12 +319,12 @@ fun SettingsDialog(
                         RadioButton(
                             selected = config.isAutomatic,
                             onClick = { viewModel.toggleAutomaticLocation(true) },
-                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFCDDC39), unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(selectedColor = Color.White, unselectedColor = Color.DarkGray)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "Otomatik Konum (GPS)", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text(text = "Cihazın uydularından canlı koordinat çözümlenir.", color = Color.Gray, fontSize = 11.sp)
+                            Text(text = "Otomatik Konum (GPS)", color = Color.White, fontSize = 14.sp)
+                            Text(text = "Canlı koordinat çözümlenir.", color = Color.Gray, fontSize = 11.sp)
                         }
                     }
 
@@ -337,17 +338,17 @@ fun SettingsDialog(
                         RadioButton(
                             selected = !config.isAutomatic,
                             onClick = { viewModel.toggleAutomaticLocation(false) },
-                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFCDDC39), unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(selectedColor = Color.White, unselectedColor = Color.DarkGray)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "Manuel Şehir Girişi", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                            Text(text = "Diyanet takvimini el ile yazdığınız şehre sabitler.", color = Color.Gray, fontSize = 11.sp)
+                            Text(text = "Manuel Şehir Girişi", color = Color.White, fontSize = 14.sp)
+                            Text(text = "Takvimi el ile yazdığınız şehre sabitler.", color = Color.Gray, fontSize = 11.sp)
                         }
                     }
                 }
 
-                HorizontalDivider(thickness = 0.5.dp, color = Color.DarkGray)
+                HorizontalDivider(thickness = 0.5.dp, color = Color(0xFF2A2A2A))
 
                 // =======================================================
                 // BÖLÜM 2: DİNAMİK METİN GİRİŞ ALANI / BİLGİLENDİRME
@@ -356,15 +357,15 @@ fun SettingsDialog(
                     OutlinedTextField(
                         value = inputCity.value,
                         onValueChange = { inputCity.value = it },
-                        label = { Text("Şehir İsmi Yazın (Örn: Ankara)", color = Color.LightGray) },
+                        label = { Text("Şehir İsmi Yazın", color = Color.Gray, fontSize = 13.sp) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF2A2A2A),
-                            unfocusedContainerColor = Color(0xFF252525),
-                            focusedBorderColor = Color(0xFFCDDC39),
-                            unfocusedBorderColor = Color.Gray
+                            focusedContainerColor = Color(0xFF1A1A1A),
+                            unfocusedContainerColor = Color(0xFF1A1A1A),
+                            focusedBorderColor = Color.White,
+                            unfocusedBorderColor = Color(0xFF2A2A2A)
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -372,69 +373,52 @@ fun SettingsDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFF151515), shape = MaterialTheme.shapes.small)
+                            .background(Color(0xFF1A1A1A), shape = MaterialTheme.shapes.small)
                             .padding(12.dp)
                     ) {
                         Text(
-                            text = "📡 GPS uyduları aktiftir. Şehir yazmak için yukarıdan 'Manuel Şehir Girişi' seçeneğini işaretleyin.",
-                            fontSize = 12.sp,
-                            color = Color(0xFFCDDC39),
-                            lineHeight = 16.sp
+                            text = "📡 GPS uyduları aktiftir. Şehir değiştirmek için yukarıdan 'Manuel Şehir Girişi' seçeneğini işaretleyin.",
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            lineHeight = 15.sp
                         )
                     }
                 }
-
-                HorizontalDivider(thickness = 0.5.dp, color = Color.DarkGray)
-
-                // CURRENT UI STATUS INFO: Kullanıcının o an hangi ekranı seçtiğini görmesi için küçük bilgi metni
-                Text(
-                    text = if (isAlternativeUi) "Şu anki Görünüm: Minimalist Gece Modu" else "Şu anki Görünüm: Klasik Detaylı Mod",
-                    color = Color.LightGray,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal
-                )
             }
         },
         // =======================================================
-        // BÖLÜM 3: MERKEZİ AKSİYON PANELİ (ÜÇ BUTON YAN YANA)
+        // BÖLÜM 3: MERKEZİ AKSİYON PANELİ (SADECE 2 BUTON)
         // =======================================================
         confirmButton = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, // Butonları iki uca ve merkeze dengeli dağıtır
+                horizontalArrangement = Arrangement.End, // Butonları sağa yaslar
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // SOL: Kapat / Vazgeç Butonu
+                // İptal Butonu
                 TextButton(onClick = onDismiss) {
-                    Text("Kapat", color = Color.LightGray)
+                    Text("İptal", color = Color.Gray, fontSize = 14.sp)
                 }
 
-                // ORTA: Tasarımı Değiştir Butonu (Canlı Önizleme Sağlar)
-                Button(
-                    onClick = { viewModel.toggleUiMode() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A2A)),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text(text = "Tasarımı Değiştir", color = Color(0xFFCDDC39), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
+                Spacer(modifier = Modifier.width(8.dp))
 
-                // SAĞ: Kaydet ve Kapat Butonu
+                // Kaydet Butonu
                 Button(
                     onClick = {
                         if (config.isAutomatic) {
                             onDismiss()
                         } else {
                             viewModel.updateLocationManually(inputCity.value)
+                            onDismiss() // Değişikliği yaptıktan sonra pencereyi kapatır
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCDDC39)),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
                 ) {
-                    Text("Kaydet", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Kaydet", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
             }
         },
-        // Boş bırakıyoruz çünkü alt kısımdaki tüm buton düzenini yukarıdaki Row ile kendimiz dizayn ettik
         dismissButton = null
     )
 }
