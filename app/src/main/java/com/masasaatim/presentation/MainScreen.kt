@@ -31,6 +31,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
 
+
 /**
  * MainScreen: Masa saatinizin yatay modda (Landscape) çalışan ana arayüz bileşenidir.
  * Klasik ve Minimalist tasarım şablonları arasında geçiş köprüsü kurar.
@@ -64,11 +65,7 @@ fun MainScreen() {
 
     // ViewModel üzerindeki canlı veriler arayüzün tetiklenmesi için State (Eyalet) olarak toplanıyor
     val minimalTime by mainViewModel.minimalTime.collectAsState() // Saniyesiz saat bilgisi (Örn: "14:45")
-    val nextVakitName by mainViewModel.nextVakitName.collectAsState() // Sıradaki namaz vaktinin Türkçe adı (Örn: "Akşam")
-
-
-
-
+    val nextVakitName by mainViewModel.nextVakitName.collectAsState() // Sıradaki namaz vaktinin Türkçe adı (Örn: "Akşam"
 
     // --- AKILLI GECE/GÜNDÜZ RENK MOTORU ---
     // Eğer 'isDimmedMode' true ise (Gece saatlerinde) piksellerin ışığı gözü almaması için loş/gri tonlara çekilir.
@@ -79,6 +76,7 @@ fun MainScreen() {
     // Kontrol butonlarının (Oynat/Durdur) gece moduna uyumlu dinamik renk tanımlamaları
     val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
     val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
+
     // Eğer ayarlar paneli durumu true ise ekranda Dialog (Açılır pencere) gösterilir
     if (showSettingsDialog) {
         SettingsDialog(
@@ -113,16 +111,20 @@ fun MainScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally // Elemanları yatayda ortalar
                 ) {
                     // Saniyesiz, devasa boyutlu dijital saat metni (180sp)
+                    // SOL PANEL İÇERİSİNDEKİ SAAT BİLEŞENİ
                     Text(
                         text = minimalTime,
-                        fontSize = 190.sp,
+                        fontSize = 200.sp,
                         fontWeight = FontWeight.Bold,
                         color = clockColor, // Gece durumuna göre loşlaşan dinamik renk
                         letterSpacing = (-2).sp, // Sayıların birbirine daha estetik yakın durması için harf arası daraltma
-                        textAlign = TextAlign.Center
-                    )
+                        lineHeight = 200.sp, // 190sp fontun dikeyde fazladan görünmez boşluk yaratmasını engeller, kutuyu tam sınırlar
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth() // Sol panelin yatayda ortalanması için genişliği kaplasın
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                            .wrapContentHeight(Alignment.CenterVertically) // Saati sol panelin tam dikey ortasına yerleştirir
+                    )
                 }
 
                 // =======================================================
