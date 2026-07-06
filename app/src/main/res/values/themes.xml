@@ -1,7 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Yerleşik Android sistemi temasını kullanarak AAPT kaynak hatasını çözer -->
-    <style name="Theme.DesktopClock" parent="@android:style/Theme.DeviceDefault.NoActionBar">
-        <!-- Ekran tamamen Jetpack Compose ile çizileceği için burası boş kalabilir -->
+    <!-- 1. 🌟 ANA UYGULAMA TEMASI: Hiçbir harici kütüphane gerektirmeyen saf Android sistemi ana teması -->
+    <style name="Theme.DesktopClock" parent="@android:style/Theme.Material.NoActionBar">
+        <!-- Durum çubuklarını saf AMOLED siyahı yapmak için sistem eşitlemeleri -->
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+
+    <!-- 2. 🌟 PROFESYONEL AÇILIŞ EKRANI TEMASI (Splash Screen API) -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Açılış ekranının arka plan rengi: Saf Siyah (#000000) -->
+        <item name="windowSplashScreenBackground">#000000</item>
+        <!-- Ortada parlayacak olan profesyonel uygulama logonuz -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- Ekran hazır olduğunda geçiş yapılacak olan asıl ana uygulama teması -->
+        <item name="postSplashScreenTheme">@style/Theme.DesktopClock</item>
     </style>
 </resources>

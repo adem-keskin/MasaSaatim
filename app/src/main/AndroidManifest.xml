@@ -53,7 +53,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.DesktopClock"
+            android:theme="@style/Theme.App.Starting"
             android:configChanges="orientation|screenSize|layoutDirection|screenLayout">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

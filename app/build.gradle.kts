@@ -82,4 +82,7 @@ dependencies {
     implementation(libs.retrofit) // Aladhan API'sine HTTP istekleri atan ana network kütüphanesi
     implementation(libs.converter.gson) // API'den gelen JSON verilerini otomatik Kotlin nesnelerine dönüştürücü (GSON)
 
+    // 🌟 YENİ: Android modern açılış ekranı kütüphanesi
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
 }
