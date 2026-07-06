@@ -1,8 +1,5 @@
 package com.masasaatim.presentation
 
-import android.app.Application
-import android.content.Context
-import android.location.Geocoder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -56,9 +53,13 @@ fun MainScreen() {
     val currentDate by mainViewModel.currentDate.collectAsState()
     val nextVakitName by mainViewModel.nextVakitName.collectAsState()
 
+    // 🌟 PİKSEL KORUMA: Anlık kayma koordinatları arayüze bağlanıyor
+    val pixelOffsetX by mainViewModel.pixelOffsetX.collectAsState()
+    val pixelOffsetY by mainViewModel.pixelOffsetY.collectAsState()
+
     val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF)
     val detailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
-    val labelColor = if (isDimmedMode) Color(0xFF222222) else Color.Gray
+
     val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
     val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
 
@@ -99,6 +100,8 @@ fun MainScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight(Alignment.CenterVertically)
+                        // 🌟 SAAT HER DAKİKA MİNİMAL ÖLÇÜDE KAYARAK PİKSEL ÖMRÜNÜ KORUR:
+                        .offset(x = pixelOffsetX.dp, y = pixelOffsetY.dp)
                 )
             }
 
@@ -108,31 +111,28 @@ fun MainScreen() {
                     .weight(0.2f)
                     .fillMaxHeight()
                     .padding(vertical = 12.dp)
-                    .padding(start = 8.dp),
+                    .padding(start = 8.dp)
+                    // 🌟 SAĞ PANELDEKİ YAZILAR DA KORUMA ALTINA ALINDI (Zıt yönlü kaydırma dengesi):
+                    .offset(x = (-pixelOffsetX).dp, y = (-pixelOffsetY).dp),
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.End
             ) {
 
-                // 1. BÖLÜM (ÜST): Sağa Yaslı Detaylı Tarih (İstediğiniz Yeni Formatta)
+                // 1. BÖLÜM (ÜST): Sağa Yaslı Detaylı Tarih
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    // currentDate formatı "dd MMMM yyyy, EEEE" (Örn: "06 Temmuz 2026, Pazartesi") şeklindedir.
-                    // İstediğiniz "06.07.2026" formatını sistem takviminden dinamik ve hatasız üretiyoruz:
                     val numericDateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
                     val formattedNumericDate = numericDateFormat.format(java.util.Date())
 
-                    // Virgülden sonrasını ayırarak sadece gün adını temiz bir şekilde yakalıyoruz
                     val dateParts = currentDate.split(",")
-                    val rawDayName = dateParts.getOrNull(1)?.trim() ?: "" // Örn: "Pazartesi"
+                    val rawDayName = dateParts.getOrNull(1)?.trim() ?: ""
 
-                    // Sadece ilk harfi büyük, kalanları küçük olacak şekilde gün adını formatlıyoruz
                     val formattedDayName = rawDayName.lowercase(Locale("tr")).replaceFirstChar {
                         if (it.isLowerCase()) it.titlecase(Locale("tr")) else it.toString()
                     }
 
-                    // Üst Satır: Tam Sayısal Tarih (Örn: 06.07.2026)
                     Text(
                         text = formattedNumericDate,
                         fontSize = 15.sp,
@@ -140,16 +140,14 @@ fun MainScreen() {
                         color = clockColor,
                         textAlign = TextAlign.End
                     )
-                    // Alt Satır: Şık Gün İsmi (Örn: Pazartesi)
                     Text(
                         text = formattedDayName,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = detailColor, // Tasarıma uyumlu yeşil vurgu rengi
+                        color = detailColor,
                         textAlign = TextAlign.End
                     )
                 }
-
 
                 // 2. BÖLÜM (ORTA): Konum İkonu ve Tek Şehir İsmi
                 Column(
@@ -172,7 +170,6 @@ fun MainScreen() {
                         textAlign = TextAlign.End
                     )
                 }
-
                 // 3. BÖLÜM (ALT): İkonlar, Vakit Adı ve Sayaç
                 Column(
                     horizontalAlignment = Alignment.End,
@@ -210,15 +207,13 @@ fun MainScreen() {
                         horizontalAlignment = Alignment.End,
                         verticalArrangement = Arrangement.spacedBy(1.dp)
                     ) {
-                        // 🌟 Işık Değeri Yükseltilmiş Yeni Satır:
                         Text(
                             text = "$nextVakitName Vaktine",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
-                            color = clockColor,
+                            color = Color.LightGray,
                             textAlign = TextAlign.End
                         )
-
                         Text(
                             text = remainingTime,
                             fontSize = 16.sp,
@@ -232,6 +227,7 @@ fun MainScreen() {
         }
     }
 }
+
 // ============================================================================
 // 🌟 MINIMALIST AYARLAR PENCERESİ (SettingsDialog)
 // ============================================================================
@@ -375,4 +371,3 @@ fun SettingsDialog(
         dismissButton = null
     )
 }
-

@@ -33,7 +33,7 @@ class MainViewModel(
     private val prayerRepository: PrayerRepository
 ) : AndroidViewModel(application) {
 
-    // --- TEMİZLENMİŞ GÜNCEL STANDART DEĞİŞKENLER ---
+    // --- GÜNCEL STANDART DEĞİŞKENLER ---
     private val _currentTime = MutableStateFlow("")
     val currentTime: StateFlow<String> = _currentTime.asStateFlow()
 
@@ -54,6 +54,13 @@ class MainViewModel(
 
     private val _locationName = MutableStateFlow("Konum yükleniyor...")
     val locationName: StateFlow<String> = _locationName.asStateFlow()
+
+    // 🌟 PİKSEL KORUMA: Saatin ve yazıların anlık kayma koordinatları (X ve Y ekseni)
+    private val _pixelOffsetX = MutableStateFlow(0f)
+    val pixelOffsetX: StateFlow<Float> = _pixelOffsetX.asStateFlow()
+
+    private val _pixelOffsetY = MutableStateFlow(0f)
+    val pixelOffsetY: StateFlow<Float> = _pixelOffsetY.asStateFlow()
 
     private val _showSettingsDialog = MutableStateFlow(false)
     val showSettingsDialog: StateFlow<Boolean> = _showSettingsDialog.asStateFlow()
@@ -77,7 +84,7 @@ class MainViewModel(
         // Saniyelik canlı saat döngüsünü başlatır
         handler.post(timeRunnable)
 
-        // 🌟 GÜNCELLEME: Eğer otomatik konum (GPS) açıksa direkt arama moduna geçsin
+        // GÜNCELLEME: Eğer otomatik konum (GPS) açıksa direkt arama moduna geçsin
         if (_currentConfig.value.isAutomatic) {
             _locationName.value = "GPS Aranıyor..."
         } else {
@@ -89,13 +96,10 @@ class MainViewModel(
         Handler(Looper.getMainLooper()).postDelayed({
             if (_prayerTimes.value == null) {
                 android.util.Log.d("MasaSaatim", "Açılışta veritabanı boş. Konum tetikleniyor...")
-
-                // Hafızadaki/Başlangıçtaki koordinatlara göre namaz vakitlerini ve konum adını otomatik yükler
                 loadPrayerDataWithLocation(_currentConfig.value.latitude, _currentConfig.value.longitude)
             }
         }, 1500)
     }
-
 
     fun setSettingsDialogVisible(visible: Boolean) {
         _showSettingsDialog.value = visible
@@ -194,11 +198,11 @@ class MainViewModel(
         } catch (e: Exception) {
             timeStr
         }
-    }    /**
+    }
+    /**
      * VERİTABANI BAĞLANTISI: Room'dan verileri çeker veya eksikse internetten ister.
      */
     fun loadPrayerDataWithLocation(latitude: Double? = null, longitude: Double? = null) {
-        // 🌟 KESİN ÇÖZÜM KİLİDİ: Koordinattan isim çözme işlemini SADECE GPS açıkken tetikliyoruz.
         if (latitude != null && longitude != null && _currentConfig.value.isAutomatic) {
             fetchCityNameFromCoordinates(latitude, longitude)
         }
@@ -317,7 +321,16 @@ class MainViewModel(
         _currentTime.value = timeFormat.format(now)
         _currentDate.value = dateFormat.format(now)
 
+        // 🌟 PİKSEL KORUMA MOTORU: Her dakikanın ilk saniyesinde (Saniye 00) X ve Y eksenini rastgele kaydırır
         val calendar = Calendar.getInstance()
+        val currentSecond = calendar.get(Calendar.SECOND)
+
+        if (currentSecond == 0) {
+            _pixelOffsetX.value = (-5..5).random().toFloat()
+            _pixelOffsetY.value = (-5..5).random().toFloat()
+            android.util.Log.d("MasaSaatimKoruma", "Piksel Kaydırma Aktif -> X: ${_pixelOffsetX.value}, Y: ${_pixelOffsetY.value}")
+        }
+
         val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
         val shouldDim = currentHour !in 6..21
         if (_isDimmedMode.value != shouldDim) {
@@ -406,4 +419,3 @@ class MainViewModel(
         }
     }
 }
-

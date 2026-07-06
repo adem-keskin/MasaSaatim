@@ -123,13 +123,13 @@ class AzanPlaybackService : Service() {
             player.stop() // Eğer halihazırda çalan bir ses varsa önce onu durdurur
             player.setMediaItem(MediaItem.fromUri(audioUri)) // Yeni ses dosyasını yükler
 
-            // Gece modu aktifse sesi %10 seviyesine (0.1f) indirir, aktif değilse tam ses (1.0f) verir
-            player.volume = if (isDimmed) 0.1f else 1.0f
+            // Gece modu aktifse sesi %20 seviyesine (0.2f) indirir, aktif değilse tam ses (1.0f) verir
+            player.volume = if (isDimmed) 0.2f else 1.0f
 
             player.prepare() // Oynatıcıyı hazırlar
             player.play()    // Ezanı oynatmaya başlar
 
-            // Ezan sesinin bitip bitmediğini dinleyen kulaklık (Listener)
+            // Ezan sesinin bitip bitmediğini dinler (Listener)
             player.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
                     // Ezan bittiğinde (STATE_ENDED) servisin arka planda boşuna şarj yememesi için kapatma komutunu tetikler
