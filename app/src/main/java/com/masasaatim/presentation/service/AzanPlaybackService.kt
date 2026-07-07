@@ -135,6 +135,13 @@ class AzanPlaybackService : Service() {
                     // Ezan bittiğinde (STATE_ENDED) servisin arka planda boşuna şarj yememesi için kapatma komutunu tetikler
                     if (state == Player.STATE_ENDED) {
                         Log.d("MasaSaatimServis", "Wiedergabe beendet. Schließe Service.")
+
+                        // 🌟 KESİN ÇÖZÜM: Ezan kendiliğinden bittiğinde MainActivity'ye "ses kapandı" yayını fırlatır
+                        val statusIntent = Intent("com.masasaatim.AZAN_STATUS_CHANGED").apply {
+                            putExtra("is_playing", false)
+                        }
+                        sendBroadcast(statusIntent)
+
                         stopPlaybackAndService()
                     }
                 }
@@ -191,6 +198,10 @@ class AzanPlaybackService : Service() {
         super.onDestroy()
     }
 
-    // Bu servis Bound Service (Bağlı Servis) olmadığı, doğrudan başlatıldığı (Started Service) için null dönülür.
-    override fun onBind(intent: Intent?): IBinder? = null
+    /**
+     * Bu servis Bound Service (Bağlı Servis) olmadığı için doğrudan null döndürülür.
+     */
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
 }

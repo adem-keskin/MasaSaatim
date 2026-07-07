@@ -1,12 +1,15 @@
 package com.masasaatim
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -32,36 +36,22 @@ import com.masasaatim.presentation.MainScreen
 import com.masasaatim.presentation.MainViewModel
 import kotlinx.coroutines.launch
 
-// 🌟 DOĞRU IMPORT: Hatayı kökten çözen asıl kütüphane referansı
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-
-/**
- * Uygulamanın ana ekran aktivitesi. Donanım izinlerini (GPS) ve
- * pencere yönetimini (Tam ekran, Yatay mod, Ekranın açık kalması) koordine eder.
- */
 class MainActivity : ComponentActivity() {
 
-    private lateinit var viewModel: MainViewModel // Ana iş mantığı kontrol merkezi
-    private lateinit var fusedLocationClient: FusedLocationProviderClient // Google GPS Konum servisi istemcisi
-    private var isLocationDataLoaded = false // Konumun başarıyla alınıp alınmadığını tutan bayrak
+    private lateinit var viewModel: MainViewModel
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var isLocationDataLoaded = false
 
-    /**
-     * Donanım Tetikleyicisi: Cihazın GPS donanımı uydulara bağlanıp gerçek dünya
-     * koordinatlarını (Enlem/Boylam) her yakaladığında bu tetikleyici ateşlenir.
-     */
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             val location: Location? = locationResult.lastLocation
             if (location != null) {
-                Log.d("MasaSaatimGPS", "Gerçek donanım koordinatları alındı: Enlem: ${location.latitude}, Boylam: ${location.longitude}")
                 isLocationDataLoaded = true
-
                 viewModel.updateLocationAutomatically(
-                    cityName = "Konum tespiti yapılıyor...",
+                    cityName = "",
                     lat = location.latitude,
                     lon = location.longitude
                 )
-
                 stopLocationUpdates()
             }
         }
@@ -73,24 +63,14 @@ class MainActivity : ComponentActivity() {
         val hasFineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         val hasCoarseLocation = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
-        val hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions[Manifest.permission.POST_NOTIFICATIONS] == true
-        } else {
-            true
-        }
-
         if (hasFineLocation || hasCoarseLocation) {
             startLocationUpdates()
         } else {
-            Log.w("MasaSaatimGPS", "Konum izni reddedildi. Otomatik GPS kapatılıyor.")
             viewModel.toggleAutomaticLocation(false)
             startWithAugustdorfFallback()
         }
-
-        if (!hasNotificationPermission) {
-            Log.w("MasaSaatimGPS", "Bildirim izni reddedildi. Ezan sesleri arka planda duyulmayabilir!")
-        }
     }
+
     private fun checkLocationPermissions() {
         val fineLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
         val coarseLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -116,13 +96,15 @@ class MainActivity : ComponentActivity() {
 
             requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
+    }    private val azanStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val isPlaying = intent?.getBooleanExtra("is_playing", false) ?: false
+            viewModel.setAzanPlayingStatus(isPlaying)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 🌟 ÇÖZÜM: Uzantı fonksiyonu (Extension function) doğru paketle çağrıldığı için
-        // ComponentActivity üzerinde artık sıfır hata ile kusursuzca çalışır.
         installSplashScreen()
-
         super.onCreate(savedInstanceState)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -147,6 +129,15 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // 🌟 KESİN ÇÖZÜM: Android 14+ kısıtlamalarına tam uyumlu, gereksiz SDK kontrollerinden
+        // arındırılmış ve 'Context.RECEIVER_NOT_EXPORTED' bayrağı açıkça belirtilmiş hatasız tescil motoru.
+        val listenFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            RECEIVER_NOT_EXPORTED
+        } else {
+            0
+        }
+        registerReceiver(azanStatusReceiver, IntentFilter("com.masasaatim.AZAN_STATUS_CHANGED"), listenFlags)
+
         setContent {
             DesktopClockTheme {
                 Surface(
@@ -165,21 +156,16 @@ class MainActivity : ComponentActivity() {
                 .setMinUpdateIntervalMillis(30000)
                 .build()
 
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                mainLooper
-            )
-            Log.d("MasaSaatimGPS", "GPS donanım anteni başarıyla aktif edildi.")
-        } catch (unlikely: SecurityException) {
-            Log.e("MasaSaatimGPS", "Başlatma esnasında güvenlik izni eksikliği: ${unlikely.localizedMessage}")
+            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+        } catch (_: SecurityException) {
+            // 🌟 Das Unterstrich-Symbol (_) signalisiert Kotlin, dass wir die Exception absichtlich ignorieren
             startWithAugustdorfFallback()
         }
     }
 
+
     private fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
-        Log.d("MasaSaatimGPS", "GPS donanım anteni kapatıldı (Pil tasarrufu).")
     }
 
     private fun startWithAugustdorfFallback() {
@@ -193,4 +179,15 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         stopLocationUpdates()
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(azanStatusReceiver)
+        } catch (_: Exception) {
+            // 🌟 Auch hier entfernt der Unterstrich (_) die Warnung über die ungenutzte Variable vollständig
+        }
+    }
+
 }
+

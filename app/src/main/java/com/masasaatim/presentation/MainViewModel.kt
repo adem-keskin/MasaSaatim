@@ -397,6 +397,13 @@ class MainViewModel(
             context.startService(intent)
         }
     }
+    // 🌟 YENİ: Servis içinden ezan kendiliğinden bittiğinde arayüzü yeşile/eski rengine döndürür
+    fun setAzanPlayingStatus(isPlaying: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            _isAzanPlaying.value = isPlaying
+        }
+    }
+
 
     override fun onCleared() {
         handler.removeCallbacks(timeRunnable)
