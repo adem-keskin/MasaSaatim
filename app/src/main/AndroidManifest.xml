@@ -69,5 +69,20 @@
             android:foregroundServiceType="mediaPlayback"
             tools:replace="android:foregroundServiceType" />
 
+        <!-- Native Widget Engine Registration -->
+        <receiver
+            android:name="com.masasaatim.presentation.MasaSaatiWidgetProvider"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Masa Saatim"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/masa_saati_widget_info" />
+        </receiver>
+
+
     </application>
 </manifest>
