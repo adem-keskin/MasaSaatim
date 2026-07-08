@@ -6,7 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.masasaatim" // Uygulamanın paket adı (R sınıfı ve iç importlar için benzersiz kimlik)
+    namespace =
+        "com.masasaatim" // Uygulamanın paket adı (R sınıfı ve iç importlar için benzersiz kimlik)
     compileSdk = 34 // Uygulamanın derlenirken kullandığı en yüksek Android SDK sürümü (Android 14)
 
     defaultConfig {
@@ -18,15 +19,18 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
-            useSupportLibrary = true // Vektör (SVG) ikonların eski cihazlarda da sorunsuz çizilmesini sağlar
+            useSupportLibrary =
+                true // Vektör (SVG) ikonların eski cihazlarda da sorunsuz çizilmesini sağlar
         }
     }
 
     buildTypes {
         // Canlıya çıkış (Release) ayarları: Uygulama mağazaya yüklenirken yapılacak işlemler
         release {
-            isMinifyEnabled = true // Proguard/R8 kod karartmasını açar: Kodun çalınmasını zorlaştırır, boyutu küçültür
-            isShrinkResources = true // Kullanılmayan tüm gereksiz resim ve kaynakları temizler: APK boyutunu düşürür
+            isMinifyEnabled =
+                true // Proguard/R8 kod karartmasını açar: Kodun çalınmasını zorlaştırır, boyutu küçültür
+            isShrinkResources =
+                true // Kullanılmayan tüm gereksiz resim ve kaynakları temizler: APK boyutunu düşürür
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -39,13 +43,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "17" // Kotlin kodlarının Java 17 sanal makinesine (JVM) uygun derlenmesini sağlar
+        jvmTarget =
+            "17" // Kotlin kodlarının Java 17 sanal makinesine (JVM) uygun derlenmesini sağlar
     }
     buildFeatures {
         compose = true // Jetpack Compose (Modern UI) özelliğini projede aktif eder
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8" // Kotlin sürümünüz ile birebir uyumlu Compose derleyici versiyonu
+        kotlinCompilerExtensionVersion =
+            "1.5.8" // Kotlin sürümünüz ile birebir uyumlu Compose derleyici versiyonu
     }
     packaging {
         resources {

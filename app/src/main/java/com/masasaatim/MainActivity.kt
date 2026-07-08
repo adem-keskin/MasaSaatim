@@ -72,8 +72,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkLocationPermissions() {
-        val fineLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-        val coarseLocation = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+        val fineLocation =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+        val coarseLocation =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
 
         val notificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -82,7 +84,8 @@ class MainActivity : ComponentActivity() {
         }
 
         if ((fineLocation == PackageManager.PERMISSION_GRANTED || coarseLocation == PackageManager.PERMISSION_GRANTED)
-            && notificationPermission == PackageManager.PERMISSION_GRANTED) {
+            && notificationPermission == PackageManager.PERMISSION_GRANTED
+        ) {
             startLocationUpdates()
         } else {
             val permissionsToRequest = mutableListOf(
@@ -96,7 +99,9 @@ class MainActivity : ComponentActivity() {
 
             requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }
-    }    private val azanStatusReceiver = object : BroadcastReceiver() {
+    }
+
+    private val azanStatusReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val isPlaying = intent?.getBooleanExtra("is_playing", false) ?: false
             viewModel.setAzanPlayingStatus(isPlaying)
@@ -113,11 +118,15 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).let { controller ->
             controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        viewModel = ViewModelProvider(this, MainViewModel.provideFactory(application))[MainViewModel::class.java]
+        viewModel = ViewModelProvider(
+            this,
+            MainViewModel.provideFactory(application)
+        )[MainViewModel::class.java]
 
         lifecycleScope.launch {
             viewModel.currentConfig.collect { config ->
@@ -136,7 +145,11 @@ class MainActivity : ComponentActivity() {
         } else {
             0
         }
-        registerReceiver(azanStatusReceiver, IntentFilter("com.masasaatim.AZAN_STATUS_CHANGED"), listenFlags)
+        registerReceiver(
+            azanStatusReceiver,
+            IntentFilter("com.masasaatim.AZAN_STATUS_CHANGED"),
+            listenFlags
+        )
 
         setContent {
             DesktopClockTheme {
@@ -156,7 +169,11 @@ class MainActivity : ComponentActivity() {
                 .setMinUpdateIntervalMillis(30000)
                 .build()
 
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                mainLooper
+            )
         } catch (_: SecurityException) {
             // 🌟 Das Unterstrich-Symbol (_) signalisiert Kotlin, dass wir die Exception absichtlich ignorieren
             startWithAugustdorfFallback()

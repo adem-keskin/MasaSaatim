@@ -1,17 +1,46 @@
 package com.masasaatim.presentation
 
+import android.app.Activity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -19,16 +48,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import java.util.Locale
 import androidx.core.view.WindowCompat
-import android.app.Activity
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.ui.Alignment
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
+import java.util.Locale
 
 @Composable
 fun MainScreen() {
@@ -265,7 +290,9 @@ fun SettingsDialog(
                 )
 
                 Column(
-                    modifier = Modifier.selectableGroup().fillMaxWidth(),
+                    modifier = Modifier
+                        .selectableGroup()
+                        .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
@@ -277,12 +304,23 @@ fun SettingsDialog(
                         RadioButton(
                             selected = config.isAutomatic,
                             onClick = { viewModel.toggleAutomaticLocation(true) },
-                            colors = RadioButtonDefaults.colors(selectedColor = Color.White, unselectedColor = Color.DarkGray)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Color.White,
+                                unselectedColor = Color.DarkGray
+                            )
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "Otomatik Konum (GPS)", color = Color.White, fontSize = 14.sp)
-                            Text(text = "Canlı koordinat çözümlenir.", color = Color.Gray, fontSize = 11.sp)
+                            Text(
+                                text = "Otomatik Konum (GPS)",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Canlı koordinat çözümlenir.",
+                                color = Color.Gray,
+                                fontSize = 11.sp
+                            )
                         }
                     }
 
@@ -295,12 +333,23 @@ fun SettingsDialog(
                         RadioButton(
                             selected = !config.isAutomatic,
                             onClick = { viewModel.toggleAutomaticLocation(false) },
-                            colors = RadioButtonDefaults.colors(selectedColor = Color.White, unselectedColor = Color.DarkGray)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = Color.White,
+                                unselectedColor = Color.DarkGray
+                            )
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(text = "Manuel Şehir Girişi", color = Color.White, fontSize = 14.sp)
-                            Text(text = "Takvimi el ile yazdığınız şehre sabitler.", color = Color.Gray, fontSize = 11.sp)
+                            Text(
+                                text = "Manuel Şehir Girişi",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "Takvimi el ile yazdığınız şehre sabitler.",
+                                color = Color.Gray,
+                                fontSize = 11.sp
+                            )
                         }
                     }
                 }
@@ -364,7 +413,12 @@ fun SettingsDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
                 ) {
-                    Text("Kaydet", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(
+                        "Kaydet",
+                        color = Color.Black,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         },

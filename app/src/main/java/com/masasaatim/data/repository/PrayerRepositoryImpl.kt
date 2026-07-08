@@ -66,7 +66,10 @@ class PrayerRepositoryImpl(
                     // API'den gelen "dd-MM-yyyy" (Örn: 09-06-2026) formatını alır
                     val rawDate = day.dateInfo.gregorian.readableDate
                     val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.US)
-                    val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US) // Room için standart ISO formatı (yyyy-MM-dd)
+                    val outputFormat = SimpleDateFormat(
+                        "yyyy-MM-dd",
+                        Locale.US
+                    ) // Room için standart ISO formatı (yyyy-MM-dd)
 
                     // Metinsel tarihi Date nesnesine çevirir, başarısız olursa cihazın o anki tarihini baz alır
                     val parsedDate = inputFormat.parse(rawDate) ?: Date()
