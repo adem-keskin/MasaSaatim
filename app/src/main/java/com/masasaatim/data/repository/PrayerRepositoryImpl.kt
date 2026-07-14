@@ -29,7 +29,6 @@ class PrayerRepositoryImpl(
     override fun getPrayerTimeForDate(date: String): Flow<PrayerTime?> {
         return prayerDao.getPrayerTimeByDate(date).map { entity ->
             entity?.let {
-                // Veritabanı veri nesnesi, Domain (İş) katmanı nesnesine haritalanıyor
                 PrayerTime(
                     date = it.date,
                     imsak = it.imsak,
@@ -44,59 +43,62 @@ class PrayerRepositoryImpl(
     }
 
     /**
-     * Verilen coğrafi koordinatları kullanarak internetten aylık ezan vakitlerini indirir,
+     * Verilen coğrafi koordinatları, ay ve yıl bilgilerini kullanarak internetten aylık ezan vakitlerini indirir,
      * tarih/saat formatlarını temizler ve yerel Room veritabanına topluca kaydeder.
      */
     override suspend fun fetchAndSaveRemotePrayerTimes(
         latitude: Double,
-        longitude: Double
+        longitude: Double,
+        month: Int,
+        year: Int
     ): Result<Unit> {
         // Ağ (Network) ve disk (Database) işlemlerinin kullanıcı arayüzünü (UI) kilitlememesi için IO thread havuzuna geçilir
         return withContext(Dispatchers.IO) {
             try {
-                // 1. Klasik donanım koordinatları ve Diyanet yöntemi (13) ile internetten veriler çekilir
-                val response = apiService.getMonthlyPrayerTimes(latitude, longitude, 13)
+                // 1. ApiService arayüzüne ay ve yıl bilgileri güvenle paslanıyor
+                val response = apiService.getMonthlyPrayerTimes(
+                    latitude = latitude,
+                    longitude = longitude,
+                    month = month,
+                    year = year,
+                    method = 13
+                )
+
+                // 🌟 PERFORMANS OPTİMİZASYONU: Format nesnelerini ve yardımcı fonksiyonu döngünün dışına aldık.
+                // Böylece 30 günlük listede her eleman için RAM'de tekrar tekrar nesne üretilmez.
+                val cleanTime = { time: String -> time.substringBefore(" ").trim() }
+                val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.US)
+                val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US) // Room için standart ISO formatı
 
                 // 2. Gelen API modeli listesi (DTO), veritabanına kaydedilecek 'PrayerEntity' listesine dönüştürülür
                 val entities = response.dataList.map { day ->
-                    // Saat metinlerinin yanındaki parantez içi ek bilgileri (Örn: "04:12 (EEST)" -> "04:12") temizleyen yardımcı fonksiyon
-                    val cleanTime = { time: String -> time.substringBefore(" ").trim() }
-
-                    // --- TARİH FORMATLAMA İŞLEMLERİ ---
-                    // API'den gelen "dd-MM-yyyy" (Örn: 09-06-2026) formatını alır
+                    // API'den gelen "dd-MM-yyyy" (Örn: 13-07-2026) formatını alır
                     val rawDate = day.dateInfo.gregorian.readableDate
-                    val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.US)
-                    val outputFormat = SimpleDateFormat(
-                        "yyyy-MM-dd",
-                        Locale.US
-                    ) // Room için standart ISO formatı (yyyy-MM-dd)
 
                     // Metinsel tarihi Date nesnesine çevirir, başarısız olursa cihazın o anki tarihini baz alır
                     val parsedDate = inputFormat.parse(rawDate) ?: Date()
-
-                    // Kapsam (Scope) hatası yaşanmaması için değişken tam burada güvenle deklare edilir:
                     val isoDateStr = outputFormat.format(parsedDate)
 
                     // Veritabanına yazılmaya hazır hale gelen kolon değerleri yapılandırılıyor
                     PrayerEntity(
-                        date = isoDateStr, // Temizlenmiş ve standartlaştırılmış tarih anahtarı
+                        date = isoDateStr, // Standartlaştırılmış tarih anahtarı (yyyy-MM-dd)
                         imsak = cleanTime(day.timings.fajr),
                         gunes = cleanTime(day.timings.sunrise),
                         ogle = cleanTime(day.timings.dhuhr),
                         ikindi = cleanTime(day.timings.asr),
-                        aksam = cleanTime(day.timings.maghrib),
+                        aksam = cleanTime(day.timings.maghrib), // Model katmanıyla tam uyumlu alan
                         yatsi = cleanTime(day.timings.isha)
                     )
                 }
 
-                // 3. Dönüştürülen tüm liste Room veritabanına tek seferde yazılır (Çakışma durumunda eskiler silinir ve üzerine yazılır)
+                // 3. Dönüştürülen tüm liste Room veritabanına tek seferde yazılır
                 prayerDao.insertPrayerTimes(entities)
-                android.util.Log.d("MasaSaatim", ">>> DATEN ERFOLGREICH IN ROOM GESPEICHERT <<<")
+                android.util.Log.d("MasaSaatim", ">>> EZAN VAKİTLERİ BAŞARIYLA ROOM VERİTABANINA KAYDEDİLDİ <<<")
 
                 Result.success(Unit) // İşlem bütünüyle başarılı oldu
             } catch (e: Exception) {
-                // İnternet kesintisi veya herhangi bir sistem hatası durumunda hata loglanır ve başarısızlık durumu dönülür
-                android.util.Log.e("MasaSaatim", "API-Fehler: ${e.localizedMessage}")
+                // Herhangi bir sistem hatası durumunda hata loglanır ve başarısızlık durumu dönülür
+                android.util.Log.e("MasaSaatim", "API Hatası: ${e.localizedMessage}")
                 Result.failure(e)
             }
         }

@@ -3,27 +3,30 @@
 # Tüm kütüphane ve eklentilerin versiyon numaralarının tek bir yerde toplandığı alan.
 # =========================================================================
 [versions]
-adhan = "1.2.0"                # Adhan kütüphanesinin sürümü (Dahili ezan hesaplamaları için)
-agp = "8.2.2"                  # Android Gradle Plugin (Android Studio derleme motoru) sürümü
-kotlin = "1.9.22"              # Projenin kullandığı ana Kotlin programlama dili sürümü
-ksp = "1.9.22-1.0.17"          # Kotlin ile tam uyumlu KSP (Room derleyicisi) sürümü
-coreKtx = "1.12.0"             # Temal Android bileşen uzantılarının sürümü
-lifecycleRuntimeKtx = "2.7.0"  # ViewModel ve Yaşam Döngüsü (Lifecycle) kütüphanelerinin sürümü
-activityCompose = "1.8.2"      # Jetpack Compose'u Aktiviteye bağlayan kütüphane sürümü
-composeBom = "2024.02.00"      # Tüm Jetpack Compose kütüphanelerini birbiriyle uyumlu çalıştıran ana paket sürümü
-room = "2.6.1"                 # Cihaz içi yerel SQL veritabanı (Room) sürümü
-work = "2.9.0"                 # Arka plan zamanlanmış görev yöneticisi (WorkManager) sürümü
-media3 = "1.2.1"               # Ezan sesini çalan ExoPlayer (Media3) kütüphane sürümü
-retrofit = "2.9.0"             # İnternetten ezan vakitlerini çeken network kütüphane sürümü
-playServicesLocation = "21.1.0" # Google Play Servisleri Donanımsal GPS Konum kütüphane sürümü
+agp = "8.7.3"                  # Android Gradle Plugin (Android Studio derleme motoru) sürümü
+kotlin = "2.0.21"              # Projenin kullandığı ana Kotlin programlama dili sürümü
+ksp = "2.0.21-1.0.26"          # Kotlin ile tam uyumlu KSP (Room derleyicisi) sürümü
+
+# 🌟 API 35 UYUMLU KARARLI SÜRÜMLERE GERİ ÇEKİLEN ALANLAR:
+coreKtx = "1.15.0"             # API 37 kilitlenmesini çözen kararlı sürüm
+lifecycleRuntimeKtx = "2.8.7"  # API 37 kilitlenmesini çözen kararlı Lifecycle sürümü
+activityCompose = "1.9.3"      # API 36 kilitlenmesini çözen kararlı Activity sürümü
+work = "2.10.0"                # API 36 kilitlenmesini çözen kararlı WorkManager sürümü
+composeBom = "2024.10.01"      # Android 15 ile tam uyumlu resmi Compose BOM sürümü
+
+room = "2.6.1"                 # Kotlin 2.0+ ve KSP ile tam uyumlu stabil Room sürümü
+retrofit = "2.9.0"             # Sektör standardı en kararlı Retrofit sürümü (3.0.0 henüz alpha/beta aşamasındadır)
+playServicesLocation = "21.3.0" # Kotlin metadata sürüm hatasını tetiklemeyen stabil konum sürümü
+
+media3 = "1.4.1"
+splashscreen = "1.0.1"
+googleFonts = "1.7.5"
 
 # =========================================================================
 # 2. BÖLÜM: KÜTÜPHANELER (LIBRARIES)
 # build.gradle.kts dosyalarında 'implementation(libs.androidx.core.ktx)' şeklinde çağrılan tanımlamalar.
 # =========================================================================
 [libraries]
-# Adhan Java/Kotlin Kitaplığı (API çalışmazsa yerel matematiksel hesaplama için alternatif olarak eklendiği görülüyor)
-adhan = { module = "com.batoulapps:adhan", version.ref = "adhan" }
 
 # Android Çekirdek ve Yaşam Döngüsü Uzantıları
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,7 +48,6 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 
 # Arka Plan İş Yöneticisi ve Medya Oynatıcı (ExoPlayer)
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
-androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
 
 # Retrofit Ağ Bağlantısı ve GSON JSON Dönüştürücü
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
@@ -53,6 +55,10 @@ converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", ve
 
 # Google Haritalar / GPS Donanımsal Konum Sağlayıcı
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-compose-ui-text-googlefonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "googleFonts" }
 
 # =========================================================================
 # 3. BÖLÜM: EKLENTİLER (PLUGINS)
@@ -62,3 +68,5 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 android-application = { id = "com.android.application", version.ref = "agp" }     # Android uygulama derleyicisi
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" } # Kotlin dil desteği
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }     # Hızlı Room kodu üretici motoru
+# 🌟 YENİ EKLENEN SATIR (Kotlin sürümünü referans almalı):
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

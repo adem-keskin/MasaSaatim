@@ -35,4 +35,18 @@ interface PrayerDao {
      */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPrayerTimes(prayerTimes: List<PrayerEntity>)
+
+    /**
+     * 🌟 YENİ: Kullanıcı şehir değiştirdiğinde eski verilerin temizlenmesini sağlar.
+     * Tablodaki tüm verileri kalıcı olarak siler.
+     */
+    @Query("DELETE FROM prayer_times")
+    suspend fun deleteAllPrayerTimes()
+
+    /**
+     * 🌟 YENİ: Veritabanında belirli bir aya ait veri olup olmadığını kontrol eder.
+     * Örn: '2026-07%' formatında sorgulama yaparak internete çıkma ihtiyacını belirler.
+     */
+    @Query("SELECT COUNT(*) FROM prayer_times WHERE date LIKE :yearMonth || '%'")
+    suspend fun getCountByMonth(yearMonth: String): Int
 }

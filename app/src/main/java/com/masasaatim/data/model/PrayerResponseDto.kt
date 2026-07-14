@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName
  * karşılığını 'dataList' değişkenine eşitler. Bir aylık günlerin listesini tutar.
  */
 data class PrayerResponseDto(
-    @SerializedName("data") val dataList: List<PrayerDayDto>
+    @SerializedName("data") val dataList: List<PrayerDayDto> = emptyList()
 )
 
 /**
@@ -23,14 +23,15 @@ data class PrayerDayDto(
  * Gün içindeki vakitlerin saatlerini tutan model.
  * Aladhan API'sindeki İngilizce isimler (Fajr, Isha vb.), projenizin daha anlaşılır
  * olması için yerel değişken adlarına (fajr, isha vb.) haritalanır.
+ * 🌟 GÜNCELLEME: Null-Safety güvencesi için tüm string alanlar güvenli varsayılan değerlere ("") bağlandı.
  */
 data class TimingsDto(
-    @SerializedName("Fajr") val fajr: String,       // İmsak / Sabah namazı vakti başlangıcı
-    @SerializedName("Sunrise") val sunrise: String,   // Güneş'in doğuş vakti
-    @SerializedName("Dhuhr") val dhuhr: String,     // Öğle ezanı vakti
-    @SerializedName("Asr") val asr: String,         // İkindi ezanı vakti
-    @SerializedName("Maghrib") val maghrib: String, // Akşam ezanı vakti
-    @SerializedName("Isha") val isha: String        // Yatsı ezanı vakti
+    @SerializedName("Fajr") val fajr: String = "",       // İmsak / Sabah namazı vakti başlangıcı
+    @SerializedName("Sunrise") val sunrise: String = "",   // Güneş'in doğuş vakti
+    @SerializedName("Dhuhr") val dhuhr: String = "",     // Öğle ezanı vakti
+    @SerializedName("Asr") val asr: String = "",         // İkindi ezanı vakti
+    @SerializedName("Maghrib") val maghrib: String = "", // Akşam ezanı vakti
+    @SerializedName("Isha") val isha: String = ""        // Yatsı ezanı vakti
 )
 
 /**
@@ -43,8 +44,8 @@ data class DateInfoDto(
 
 /**
  * Miladi takvime göre okunabilir tarih formatını tutan nihai model.
- * @SerializedName("date") -> API'den gelen "08-06-2026" (GG-AA-YYYY) gibi metinsel tarih bilgisini alır.
+ * @SerializedName("date") -> API'den gelen "13-07-2026" (GG-AA-YYYY) gibi metinsel tarih bilgisini alır.
  */
 data class GregorianDto(
-    @SerializedName("date") val readableDate: String
+    @SerializedName("date") val readableDate: String = ""
 )

@@ -55,11 +55,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+/**
+ * Masa Saati uygulamasının ana ekran arayüz bileşeni.
+ * Durum akışlarını (StateFlow) dinleyerek ekranı dinamik olarak günceller.
+ */
 @Composable
 fun MainScreen() {
-
     val localContext = LocalContext.current
     val window = (localContext as? Activity)?.window
+
+    // Tam ekran modu ayarları (Sistem barlarını gizler, kaydırmayla görünür kılar)
     if (window != null) {
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
@@ -67,6 +72,7 @@ fun MainScreen() {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
+    // ViewModel bağlantısı ve Durum (State) takipleri
     val mainViewModel: MainViewModel = viewModel()
 
     val showSettingsDialog by mainViewModel.showSettingsDialog.collectAsState()
@@ -78,86 +84,60 @@ fun MainScreen() {
     val currentDate by mainViewModel.currentDate.collectAsState()
     val nextVakitName by mainViewModel.nextVakitName.collectAsState()
 
-    // 🌟 PİKSEL KORUMA: Anlık kayma koordinatları arayüze bağlanıyor
+    // Piksel koruma (Burn-in Protection) koordinatları
     val pixelOffsetX by mainViewModel.pixelOffsetX.collectAsState()
     val pixelOffsetY by mainViewModel.pixelOffsetY.collectAsState()
 
+    // Gece modu (Loş mod) renk geçiş dinamikleri
     val clockColor = if (isDimmedMode) Color(0xFF444444) else Color(0xFFFFFFFF)
     val detailColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
-
     val iconActiveColor = if (isDimmedMode) Color(0xFF005511) else Color(0xFFCDDC39)
     val iconPassiveColor = if (isDimmedMode) Color(0xFF222222) else Color(0xFF555555)
 
+    // Ayarlar penceresi görünürlük kontrolü
     if (showSettingsDialog) {
         SettingsDialog(
             viewModel = mainViewModel,
             onDismiss = { mainViewModel.setSettingsDialogVisible(false) }
         )
     }
+
+    // Ana Ekran AMOLED Siyah Katmanı
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF000000))
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        // 📦 1. PARÇA KATMANI: Ana Saat ve Sağ Panel Yerleşim Kombinasyonu
+        MainClockLayout(
+            currentTime = currentTime,
+            clockColor = clockColor,
+            pixelOffsetX = pixelOffsetX,
+            pixelOffsetY = pixelOffsetY,
+            rightPanelContent = {
 
-            // SOL PANEL (%80 Genişlik): Devasa Dijital Saat
-            Column(
-                modifier = Modifier
-                    .weight(0.8f)
-                    .fillMaxHeight(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = currentTime,
-                    fontSize = 200.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = clockColor,
-                    letterSpacing = (-2).sp,
-                    lineHeight = 170.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(Alignment.CenterVertically)
-                        // 🌟 SAAT HER DAKİKA MİNİMAL ÖLÇÜDE KAYARAK PİKSEL ÖMRÜNÜ KORUR:
-                        .offset(x = pixelOffsetX.dp, y = pixelOffsetY.dp)
-                )
-            }
-
-            // SAĞ PANEL (%20 Genişlik): Hatasız Dikey 3'lü Bölüm Nizamı
-            Column(
-                modifier = Modifier
-                    .weight(0.2f)
-                    .fillMaxHeight()
-                    .padding(vertical = 12.dp)
-                    .padding(start = 8.dp)
-                    // 🌟 SAĞ PANELDEKİ YAZILAR DA KORUMA ALTINA ALINDI (Zıt yönlü kaydırma dengesi):
-                    .offset(x = (-pixelOffsetX).dp, y = (-pixelOffsetY).dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.End
-            ) {
-
-                // 1. BÖLÜM (ÜST): Sağa Yaslı Detaylı Tarih
+                // -------------------------------------------------------------------------
+                // 1. BÖLÜM (ÜST): Sağa Yaslı Detaylı Tarih Alanı
+                // -------------------------------------------------------------------------
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val numericDateFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+                    // Türkçe yerelleştirme dil desteğini hafızaya alıyoruz
+                    val trLocale = remember { Locale("tr", "TR") }
+                    val numericDateFormat = remember { SimpleDateFormat("dd.MM.yyyy", trLocale) }
                     val formattedNumericDate = numericDateFormat.format(java.util.Date())
 
+                    // ViewModel'den gelen gün ismini çözümlüyoruz
                     val dateParts = currentDate.split(",")
-                    val rawDayName = dateParts.getOrNull(1)?.trim() ?: ""
+                    val rawDayName = dateParts.getOrNull(0)?.trim() ?: ""
 
-                    val formattedDayName = rawDayName.lowercase(Locale("tr")).replaceFirstChar {
-                        if (it.isLowerCase()) it.titlecase(Locale("tr")) else it.toString()
+                    // Gün isminin sadece ilk harfini büyüterek estetik standart sağlıyoruz
+                    val formattedDayName = rawDayName.lowercase(trLocale).replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase(trLocale) else it.toString()
                     }
 
+                    // Üst Satır: Sayısal Tarih (Örn: 14.07.2026)
                     Text(
                         text = formattedNumericDate,
                         fontSize = 15.sp,
@@ -165,6 +145,8 @@ fun MainScreen() {
                         color = clockColor,
                         textAlign = TextAlign.End
                     )
+
+                    // Alt Satır: Sadece Gün İsmi Görünür (Örn: Salı)
                     Text(
                         text = formattedDayName,
                         fontSize = 14.sp,
@@ -174,7 +156,10 @@ fun MainScreen() {
                     )
                 }
 
-                // 2. BÖLÜM (ORTA): Konum İkonu ve Tek Şehir İsmi
+
+                // -------------------------------------------------------------------------
+                // 2. BÖLÜM (ORTA): Konum İkonu ve Tek Şehir İsmi (Tıklanabilir Ayarlar)
+                // -------------------------------------------------------------------------
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -184,7 +169,7 @@ fun MainScreen() {
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = "Ayarlar",
                         tint = detailColor,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = locationName.uppercase(Locale("tr")),
@@ -195,11 +180,15 @@ fun MainScreen() {
                         textAlign = TextAlign.End
                     )
                 }
-                // 3. BÖLÜM (ALT): İkonlar, Vakit Adı ve Sayaç
+
+                // -------------------------------------------------------------------------
+                // 3. BÖLÜM (ALT): Medya Butonları, Sıradaki Vakit ve Geri Sayım Sayacı
+                // -------------------------------------------------------------------------
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    // Üst Sıra: Ezan Sesini Test Etme ve Susturma Butonları
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -228,9 +217,10 @@ fun MainScreen() {
                         }
                     }
 
+                    // Alt Sıra: Ezan Vakti Adı ve Canlı Sayaç Gösterimi
                     Column(
                         horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
                             text = "$nextVakitName Vaktine",
@@ -249,13 +239,120 @@ fun MainScreen() {
                     }
                 }
             }
+        )
+    }
+} // 🌟 MainScreen() ana arayüz fonksiyonunun nihai güvenli kapanış parantezi
+
+
+// =========================================================================
+// 📦 ANA YERLEŞİM BİLEŞENİ (MAIN CLOCK LAYOUT)
+// =========================================================================
+/**
+ * Ekran yerleşimini sol panel (%80 saat) ve sağ panel (%20 veriler) olarak dengeler.
+ * Dikeyde tüm arayüz bileşenlerini tam merkez eksende hizalar.
+ */
+@Composable
+fun MainClockLayout(
+    currentTime: String,
+    clockColor: Color,
+    pixelOffsetX: Float,
+    pixelOffsetY: Float,
+    rightPanelContent: @Composable () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp, vertical = 0.dp),
+        verticalAlignment = Alignment.CenterVertically // Sol ve sağ paneli ekrana göre tam dikey ortalar
+    ) {
+        // SOL PANEL (%80 Genişlik): Devasa Dijital Saat Hücresi
+        Column(
+            modifier = Modifier
+                .weight(0.8f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            DigitalClockView(
+                currentTime = currentTime,
+                clockColor = clockColor,
+                pixelOffsetX = pixelOffsetX,
+                pixelOffsetY = pixelOffsetY
+            )
+        }
+
+        // SAĞ PANEL (%20 Genişlik): Dinamik Veri Akış Hücresi
+        Column(
+            modifier = Modifier
+                .weight(0.2f)
+                .fillMaxHeight()
+                .padding(vertical = 12.dp)
+                .padding(start = 8.dp)
+                // 🌟 PİKSEL KORUMA DENGELEMESİ: Sağ paneldeki yazılar zıt eksende hareket ederek taşmayı önler
+                .offset(x = (-pixelOffsetX).dp, y = (-pixelOffsetY).dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.End
+        ) {
+            rightPanelContent()
         }
     }
 }
+// =========================================================================
+// 🕰️ 2. PARÇA: DEVASA DİJİTAL SAAT BİLEŞENİ (DIGITAL CLOCK VIEW)
+// =========================================================================
+/**
+ * Apple tarzı boylamasına ince-uzun ve milimetrik olarak alt-üst boşlukları
+ * eşitlenmiş, piksel ömrü korumalı bağımsız dev dijital saat hücresi.
+ */
+@Composable
+fun DigitalClockView(
+    currentTime: String,
+    clockColor: Color,
+    pixelOffsetX: Float,
+    pixelOffsetY: Float
+) {
+    Text(
+        text = currentTime,
+        fontSize = 330.sp, // Yatay ekranda maksimum dikey yüksekliğe ulaşan yazı boyutu
+        fontWeight = FontWeight.Normal, // İnce ve modern Apple tasarım dili nizamı
+        color = clockColor,
+        letterSpacing = (-12).sp, // Rakamların ve iki noktanın birbirine tam nizamda yanaşması
+        lineHeight = 330.sp, // Satır yüksekliğini sabitleyerek taşmaları önler
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.displayLarge.copy(
+            // APPLE TARZI DİKİNE UZATMA: Harflerin yatay genişliğini %65'e daraltır.
+            // Böylece rakamlar yana doğru taşmaz, dikeyde uzun ve estetik görünür.
+            textGeometricTransform = androidx.compose.ui.text.style.TextGeometricTransform(
+                scaleX = 0.65f, // 1.0f normaldir, 0.65f yatayda %35 daraltır
+                skewX = 0f      // Eğim (0f düz tutar)
+            ),
+            // Fontun işletim sistemi tabanlı otomatik iç boşluklarını tamamen yok eder
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(
+                includeFontPadding = false
+            ),
+            // MİLİMETRİK EŞİTLEME: Üstteki fazladan boşluğu alttaki boşlukla matematiksel eşitler
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(Alignment.CenterVertically) // Kutunun içindeki metni dikeyde ortalar
+            .offset(
+                x = pixelOffsetX.dp,
+                y = pixelOffsetY.dp
+            ) // Piksel ömrü koruma kayma koordinatları
+    )
+}
 
 // ============================================================================
-// 🌟 MINIMALIST AYARLAR PENCERESİ (SettingsDialog)
+// 🌟 3. PARÇA: MİNİMALİST AYARLAR PENCERESİ (SETTINGSDIALOG)
 // ============================================================================
+/**
+ * Kullanıcının otomatik GPS veya manuel şehir araması yapabilmesini sağlayan,
+ * AMOLED tam siyah temayla uyumlu Material 3 diyalog penceresi bileşeni.
+ */
 @Composable
 fun SettingsDialog(
     viewModel: MainViewModel,
@@ -266,7 +363,7 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF121212),
+        containerColor = Color(0xFF121212), // Koyu diyalog arka yüzey rengi
         title = {
             Text(
                 text = "Uygulama Ayarları",
@@ -289,12 +386,14 @@ fun SettingsDialog(
                     letterSpacing = 0.5.sp
                 )
 
+                // Tekli seçim Radio Button grubu
                 Column(
                     modifier = Modifier
                         .selectableGroup()
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // --- OPTION 1: OTOMATİK KONUM (GPS) ---
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -324,6 +423,7 @@ fun SettingsDialog(
                         }
                     }
 
+                    // --- OPTION 2: MANUEL ŞEHİR GİRİŞİ ---
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -356,6 +456,7 @@ fun SettingsDialog(
 
                 HorizontalDivider(thickness = 0.5.dp, color = Color(0xFF2A2A2A))
 
+                // Seçilen yönteme göre dinamik alt panel kontrolü
                 if (!config.isAutomatic) {
                     OutlinedTextField(
                         value = inputCity.value,
@@ -414,7 +515,7 @@ fun SettingsDialog(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "Kaydet",
+                        text = "Kaydet",
                         color = Color.Black,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp

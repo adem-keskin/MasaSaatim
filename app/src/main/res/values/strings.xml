@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">NamaZamaN</string>
+    <string name="widget_description">Anlık ezan vakitlerini ve kalan süreyi ana ekranınızda canlı takip edin.</string>
+
 </resources>

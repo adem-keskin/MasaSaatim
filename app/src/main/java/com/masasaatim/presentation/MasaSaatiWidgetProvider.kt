@@ -14,13 +14,31 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
+/**
+ * Android ana ekranında (Homescreen) ezan vakitlerini ve kalan süreyi
+ * canlı gösteren masa saati widget sağlayıcısı.
+ */
 class MasaSaatiWidgetProvider : AppWidgetProvider() {
+
+    // =========================================================================
+    // 🌟 MERKEZİ TEMKİN DAKİKA AYARLARI
+    // Süreleri değiştirmek istediğinizde sadece buradaki rakamları değiştirmeniz yeterlidir.
+    // =========================================================================
+    companion object {
+        const val TEMKIN_IMSAK = 39   // İmsak vaktine 39 dakika ekler
+        const val TEMKIN_GUNES = 1    // Güneş vaktine 1 dakika ekler
+        const val TEMKIN_OGLE = 0     // Değişiklik yok
+        const val TEMKIN_IKINDI = 0   // Değişiklik yok
+        const val TEMKIN_AKSAM = 0    // Değişiklik yok
+        const val TEMKIN_YATSI = -41  // Yatsı vaktinden 41 dakika çıkarır
+    }
 
     override fun onUpdate(
         context: Context,
@@ -31,28 +49,30 @@ class MasaSaatiWidgetProvider : AppWidgetProvider() {
         val getPrayerTimeUseCase = appContainer.getPrayerTimeUseCase
 
         CoroutineScope(Dispatchers.IO).launch {
-            val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+            val isoDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val todayStr = isoDateFormat.format(Date())
             val prayerTime = getPrayerTimeUseCase(todayStr).firstOrNull()
 
-            CoroutineScope(Dispatchers.Main).launch {
+            withContext(Dispatchers.Main) {
                 for (appWidgetId in appWidgetIds) {
                     val remoteViews = RemoteViews(context.packageName, R.layout.masa_saati_widget_layout)
 
                     remoteViews.setTextViewText(R.id.widget_location_name, "AUGUSTDORF")
 
                     if (prayerTime != null) {
-                        // 🌟 GÜNCELLEME: Tüm vakitler ve yeni eklenen Güneş vaktinin saatleri XML'e başarıyla giydirildi
-                        remoteViews.setTextViewText(R.id.widget_time_imsak, applyTemkin(39, prayerTime.imsak))
-                        remoteViews.setTextViewText(R.id.widget_time_gunes, applyTemkin(1, prayerTime.gunes))
-                        remoteViews.setTextViewText(R.id.widget_time_ogle, applyTemkin(0, prayerTime.ogle))
-                        remoteViews.setTextViewText(R.id.widget_time_ikindi, applyTemkin(0, prayerTime.ikindi))
-                        remoteViews.setTextViewText(R.id.widget_time_aksam, applyTemkin(0, prayerTime.aksam))
-                        remoteViews.setTextViewText(R.id.widget_time_yatsi, applyTemkin(-41, prayerTime.yatsi))
+                        // 🌟 DÜZELTİLDİ: Yukarıdaki merkezi temkin sabitleri buraya bağlandı
+                        remoteViews.setTextViewText(R.id.widget_time_imsak, applyTemkin(TEMKIN_IMSAK, prayerTime.imsak))
+                        remoteViews.setTextViewText(R.id.widget_time_gunes, applyTemkin(TEMKIN_GUNES, prayerTime.gunes))
+                        remoteViews.setTextViewText(R.id.widget_time_ogle, applyTemkin(TEMKIN_OGLE, prayerTime.ogle))
+                        remoteViews.setTextViewText(R.id.widget_time_ikindi, applyTemkin(TEMKIN_IKINDI, prayerTime.ikindi))
+                        remoteViews.setTextViewText(R.id.widget_time_aksam, applyTemkin(TEMKIN_AKSAM, prayerTime.aksam))
+                        remoteViews.setTextViewText(R.id.widget_time_yatsi, applyTemkin(TEMKIN_YATSI, prayerTime.yatsi))
 
+                        // Geri sayım metni hesaplanıp basılıyor
                         val countdownText = calculateRemainingText(prayerTime)
                         remoteViews.setTextViewText(R.id.widget_countdown_timer, countdownText)
                     } else {
-                        remoteViews.setTextViewText(R.id.widget_countdown_timer, "Loading...")
+                        remoteViews.setTextViewText(R.id.widget_countdown_timer, "Yükleniyor...")
                     }
 
                     val intent = Intent(context, MainActivity::class.java)
@@ -68,6 +88,9 @@ class MasaSaatiWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /**
+     * Diyanet takvimi uyumu için ezan vakitlerine dakika ekleyen veya çıkaran yardımcı fonksiyon.
+     */
     private fun applyTemkin(minutes: Int, timeStr: String): String {
         if (minutes == 0) return timeStr
         return try {
@@ -81,57 +104,60 @@ class MasaSaatiWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /**
+     * Sıradaki ezan vaktini bulup aradaki zaman farkını HH:mm:ss formatında metne dönüştürür.
+     */
     private fun calculateRemainingText(prayer: PrayerTime): String {
         val now = Calendar.getInstance()
         val currentMs = now.timeInMillis
+        val trLocale = Locale("tr", "TR")
         val todayStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(Date())
 
-        // 🌟 GÜNCELLEME: Güneş vakti de canlı geri sayım zincirine dahil edildi
+        // 🌟 DÜZELTİLDİ: Sayaç matrisindeki isimler Türkçe yapıldı ve merkezi temkin süreleri buraya da tam eşitlendi!
         val prayerList = listOf(
-            Pair("Imsak", applyTemkin(39, prayer.imsak)),
-            Pair("Gunes", applyTemkin(1, prayer.gunes)),
-            Pair("Ogle", applyTemkin(0, prayer.ogle)),
-            Pair("Ikindi", applyTemkin(0, prayer.ikindi)),
-            Pair("Aksam", applyTemkin(0, prayer.aksam)),
-            Pair("Yatsi", applyTemkin(-41, prayer.yatsi))
+            Pair("İmsak", applyTemkin(TEMKIN_IMSAK, prayer.imsak)),
+            Pair("Güneş", applyTemkin(TEMKIN_GUNES, prayer.gunes)),
+            Pair("Öğle", applyTemkin(TEMKIN_OGLE, prayer.ogle)),
+            Pair("İkindi", applyTemkin(TEMKIN_IKINDI, prayer.ikindi)),
+            Pair("Akşam", applyTemkin(TEMKIN_AKSAM, prayer.aksam)),
+            Pair("Yatsı", applyTemkin(TEMKIN_YATSI, prayer.yatsi))
         )
 
-        var nextVakit = "Imsak"
+        var nextVakit = "İmsak"
         var nextVakitMs: Long = 0
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
         for (vakit in prayerList) {
             try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
                 val vakitDate = sdf.parse(todayStr + vakit.second)
                 if (vakitDate != null && vakitDate.time > currentMs) {
                     nextVakit = vakit.first
                     nextVakitMs = vakitDate.time
                     break
                 }
-            } catch (_: Exception) { /* Ignored */ }
+            } catch (_: Exception) { /* İhmal edildi */ }
         }
 
         if (nextVakitMs == 0L) {
             val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
             val tomorrowStr = SimpleDateFormat("yyyy-MM-dd ", Locale.getDefault()).format(tomorrow.time)
             try {
-                val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                val imsakDate = sdf.parse(tomorrowStr + applyTemkin(39, prayer.imsak))
+                val imsakDate = sdf.parse(tomorrowStr + applyTemkin(TEMKIN_IMSAK, prayer.imsak))
                 if (imsakDate != null) {
                     nextVakitMs = imsakDate.time
-                    nextVakit = "Imsak"
+                    nextVakit = "İmsak"
                 }
-            } catch (_: Exception) { /* Ignored */ }
+            } catch (_: Exception) { /* İhmal edildi */ }
         }
 
         val diffMs = nextVakitMs - currentMs
         return if (diffMs > 0) {
             val hours = TimeUnit.MILLISECONDS.toHours(diffMs)
             val minutes = TimeUnit.MILLISECONDS.toMinutes(diffMs) % 60
-            val seconds = TimeUnit.MILLISECONDS.toSeconds(diffMs) % 60
-            String.format(Locale.getDefault(), "%s: %02d:%02d:%02d", nextVakit, hours, minutes, seconds)
+
+            String.format(trLocale, "%s: %02d:%02d", nextVakit, hours, minutes)
         } else {
-            "00:00:00"
+            "00:00"
         }
     }
 }

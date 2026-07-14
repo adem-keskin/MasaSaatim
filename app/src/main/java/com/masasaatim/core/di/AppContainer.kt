@@ -9,6 +9,7 @@ import com.masasaatim.data.local.PrayerDatabase
 import com.masasaatim.data.repository.PrayerRepositoryImpl
 import com.masasaatim.domain.repository.PrayerRepository
 import com.masasaatim.domain.usecase.GetPrayerTimeUseCase
+// 🌟 KRİTİK İMPORT: Farklı pakette yer alan MainViewModel'i buraya bağlıyoruz
 import com.masasaatim.presentation.MainViewModel
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -52,15 +53,20 @@ class AppContainer(private val context: Context) {
     // 5. ViewModel Üretim Fabrikası (Factory)
     // Android sisteminin MainViewModel'i doğru parametrelerle (Application, UseCase, Repository)
     // oluşturabilmesi için gerekli olan özel fabrikayı (Factory) sağlar.
-    fun provideFactory(application: Application) = object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            // MainViewModel başlatılırken gerekli tüm bağımlılıklar burada içeriye aktarılır (Inject edilir).
-            return MainViewModel(
-                application,
-                getPrayerTimeUseCase,
-                prayerRepository // Veri deposu doğrudan ViewModel'e teslim ediliyor.
-            ) as T
+    fun provideFactory(application: Application): ViewModelProvider.Factory {
+        return object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+                    // MainViewModel başlatılırken gerekli tüm bağımlılıklar burada içeriye aktarılır (Inject edilir).
+                    return MainViewModel(
+                        application,
+                        getPrayerTimeUseCase,
+                        prayerRepository // Veri deposu doğrudan ViewModel'e teslim ediliyor.
+                    ) as T
+                }
+                throw IllegalArgumentException("Bilinmeyen ViewModel Sınıfı: ${modelClass.name}")
+            }
         }
     }
 }

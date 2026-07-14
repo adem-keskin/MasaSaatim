@@ -13,18 +13,25 @@ interface PrayerRepository {
     /**
      * Belirli bir tarihe ait ezan vakitlerini yerel veri kaynağından canlı bir akış (Flow) olarak getirir.
      *
-     * @param date Sorgulanacak olan standart tarih formatı (Örn: "2026-06-09")
+     * @param date Sorgulanacak olan standart tarih formatı (Örn: "2026-07-13")
      * @return İlgili tarihe ait temizlenmiş ezan vakti verilerini (PrayerTime) reaktif akış olarak döner. Kayıt yoksa null iletebilir.
      */
     fun getPrayerTimeForDate(date: String): Flow<PrayerTime?>
 
     /**
-     * Cihazın donanımsal GPS uydularından gelen koordinatları (Enlem ve Boylam) kullanarak
-     * internetten aylık güncel ezan vakitlerini indirir ve yerel hafızaya kaydeder.
+     * Verilen koordinatları, takvimin dinamik Ay ve Yıl bilgilerini kullanarak internetten aylık
+     * güncel ezan vakitlerini indirir ve yerel hafızaya (Room) kaydeder.
      *
-     * @param latitude Konumun harita üzerindeki enlem (Breitengrad) değeri (Double)
-     * @param longitude Konumun harita üzerindeki boylam (Längengrad) değeri (Double)
+     * @param latitude Konumun harita üzerindeki enlem (Latitude) değeri
+     * @param longitude Konumun harita üzerindeki boylam (Longitude) değeri
+     * @param month Sorgulanacak dinamik takvim ayı (Örn: 7) - Ay geçişlerindeki veri kaybını önler
+     * @param year Sorgulanacak dinamik takvim yılı (Örn: 2026) - Yılbaşı gecesindeki senkronizasyon hatalarını çözer
      * @return İşlemin başarılı (Success) veya başarısız (Failure) olduğunu bildiren Kotlin 'Result' yapısı döner.
      */
-    suspend fun fetchAndSaveRemotePrayerTimes(latitude: Double, longitude: Double): Result<Unit>
+    suspend fun fetchAndSaveRemotePrayerTimes(
+        latitude: Double,
+        longitude: Double,
+        month: Int,
+        year: Int
+    ): Result<Unit>
 }

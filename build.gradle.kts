@@ -12,4 +12,8 @@ plugins {
     // KSP (Kotlin Symbol Processing) Eklentisi: Room veritabanı gibi kütüphanelerin kod derleme aşamasında
     // arka planda çok daha hızlı ve performanslı çalışmasını sağlayan yeni nesil kod üretici motoru.
     alias(libs.plugins.google.devtools.ksp) apply false
+
+    // 🌟 YENİ EKLENEN SATIR:
+    alias(libs.plugins.compose.compiler) apply false
+
 }

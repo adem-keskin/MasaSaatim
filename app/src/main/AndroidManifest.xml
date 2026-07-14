@@ -69,9 +69,9 @@
             android:foregroundServiceType="mediaPlayback"
             tools:replace="android:foregroundServiceType" />
 
-        <!-- Native Widget Engine Registration -->
+        <!-- 3. ANA EKRAN WIDGET MOTORU KAYDI -->
         <receiver
-            android:name="com.masasaatim.presentation.MasaSaatiWidgetProvider"
+            android:name=".presentation.MasaSaatiWidgetProvider"
             android:icon="@mipmap/ic_launcher"
             android:label="Masa Saatim"
             android:exported="true">

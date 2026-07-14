@@ -2,11 +2,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#00000000"
+    android:background="#CC000000"
+    android:gravity="center_horizontal"
     android:orientation="vertical"
-    android:padding="10dp"
-    android:gravity="center_horizontal">
+    android:padding="12dp">
 
+    <!-- Konum Başlığı -->
     <TextView
         android:id="@+id/widget_location_name"
         android:layout_width="wrap_content"
@@ -16,6 +17,7 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
+    <!-- Kalan Süre Sayacı -->
     <TextView
         android:id="@+id/widget_countdown_timer"
         android:layout_width="wrap_content"
@@ -27,135 +29,160 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
+    <!-- 6 Vakitlik Matris Alanı -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_gravity="center">
+        android:layout_gravity="center"
+        android:orientation="vertical">
 
+        <!-- 1. İMSAK SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp">
+            android:layout_marginBottom="4dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Imsak"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_imsak"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
+        <!-- 2. GÜNEŞ SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp">
+            android:layout_marginBottom="4dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Günes"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_gunes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
+        <!-- 3. ÖĞLE SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp">
+            android:layout_marginBottom="4dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Ögle"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_ogle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
+        <!-- 4. İKİNDİ SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp">
+            android:layout_marginBottom="4dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Ikindi"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_ikindi"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
+        <!-- 5. AKŞAM SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="3dp">
+            android:layout_marginBottom="4dp">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Aksam"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_aksam"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
+        <!-- 6. YATSI SATIRI -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
                 android:text="Yatsi"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_alignParentStart="true" />
+                android:textColor="#E0E0E0"
+                android:textSize="12sp" />
+
             <TextView
                 android:id="@+id/widget_time_yatsi"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
                 android:text="00:00"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
-                android:layout_alignParentEnd="true" />
+                android:textStyle="bold" />
         </RelativeLayout>
 
     </LinearLayout>

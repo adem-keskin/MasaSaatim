@@ -2,9 +2,16 @@
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="110dp"
-    android:targetCellWidth="5"
-    android:targetCellHeight="5"
+
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+
+    android:maxResizeWidth="220dp"
+    android:minResizeHeight="220dp"
+
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/masa_saati_widget_layout"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+
+    android:description="@string/widget_description"/>
